@@ -24,6 +24,15 @@ export default function InputPage({ type }: InputPageProps) {
   };
   const parseAmount = (val: string) => val.replace(/[^0-9]/g, '');
 
+  // 세부 항목 조회 유틸리티 (기본값 추가)
+  const getSubOptionsByCategory = (cat: string) => {
+    const options = budgets.filter(b => b.category === cat).map(b => b.subCategory);
+    if (cat === '생활비' && !options.includes('생활비 기타')) options.push('생활비 기타');
+    if (cat === '교통비' && !options.includes('교통비 기타')) options.push('교통비 기타');
+    if (cat === '예비비' && !options.includes('기타예비비')) options.push('기타예비비');
+    return Array.from(new Set(options));
+  };
+
   useEffect(() => {
     getBudgets().then(setBudgets).catch(console.error);
   }, []);
@@ -121,9 +130,9 @@ export default function InputPage({ type }: InputPageProps) {
 
   // 대분류 변경 시 첫 번째 세부 항목으로 자동 설정
   useEffect(() => {
-    const options = budgets.filter(b => b.category === manualCat);
+    const options = getSubOptionsByCategory(manualCat);
     if (options.length > 0) {
-      setManualSub(options[0].subCategory);
+      setManualSub(options[0]);
     } else {
       setManualSub('');
     }
@@ -273,10 +282,10 @@ export default function InputPage({ type }: InputPageProps) {
 
         <div className="space-y-4">
           {expenseRows.map((row, index) => {
-            const subOptions = budgets.filter(b => b.category === row.category);
+            const subOptions = getSubOptionsByCategory(row.category);
             // 소분류 자동 선택 로직
             if (!row.subCategory && subOptions.length > 0) {
-               updateExpenseRow(row.id, 'subCategory', subOptions[0].subCategory);
+               updateExpenseRow(row.id, 'subCategory', subOptions[0]);
             }
 
             return (
@@ -314,8 +323,8 @@ export default function InputPage({ type }: InputPageProps) {
                       onChange={(e) => updateExpenseRow(row.id, 'subCategory', e.target.value)}
                       className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-2 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
                     >
-                      {subOptions.map(b => (
-                        <option key={b.subCategory} value={b.subCategory}>{b.subCategory}</option>
+                      {subOptions.map(subCat => (
+                        <option key={subCat} value={subCat}>{subCat}</option>
                       ))}
                       {subOptions.length === 0 && <option value="" disabled>항목 없음</option>}
                     </select>
@@ -468,15 +477,12 @@ export default function InputPage({ type }: InputPageProps) {
                 onChange={(e) => setManualSub(e.target.value)}
                 className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
-                {budgets
-                  .filter(b => b.category === manualCat)
-                  .map(b => (
-                    <option key={b.subCategory} value={b.subCategory}>
-                      {b.subCategory}
-                    </option>
-                  ))
-                }
-                {budgets.filter(b => b.category === manualCat).length === 0 && (
+                {getSubOptionsByCategory(manualCat).map(subCat => (
+                  <option key={subCat} value={subCat}>
+                    {subCat}
+                  </option>
+                ))}
+                {getSubOptionsByCategory(manualCat).length === 0 && (
                   <option value="" disabled>항목 없음</option>
                 )}
               </select>
