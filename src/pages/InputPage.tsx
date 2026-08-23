@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getBudgets, addTransaction } from '../services/api';
 import { Budget } from '../types';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, Plus, Trash2 } from 'lucide-react';
 
 interface InputPageProps {
   type?: 'income' | 'expense';
@@ -24,10 +24,8 @@ export default function InputPage({ type }: InputPageProps) {
   const parseAmount = (val: string) => val.replace(/[^0-9]/g, '');
 
   useEffect(() => {
-    if (isIncome) {
-      getBudgets().then(setBudgets).catch(console.error);
-    }
-  }, [isIncome]);
+    getBudgets().then(setBudgets).catch(console.error);
+  }, []);
 
   // Toast
   const showToast = (msg: string) => {
@@ -157,17 +155,225 @@ export default function InputPage({ type }: InputPageProps) {
     }
   };
 
+  // ============================
+  // 지출 입력 다중 폼 로직
+  // ============================
+  const [expenseMonth, setExpenseMonth] = useState((new Date().getMonth() + 1).toString());
+  
+  interface ExpenseRow {
+    id: string;
+    date: string;
+    category: string;
+    subCategory: string;
+    amount: string;
+    memo: string;
+  }
+  
+  const [expenseRows, setExpenseRows] = useState<ExpenseRow[]>([{
+    id: Date.now().toString(),
+    date: today,
+    category: '생활비',
+    subCategory: '',
+    amount: '',
+    memo: ''
+  }]);
+
+  const addExpenseRow = () => {
+    if (expenseRows.length >= 20) {
+      showToast('최대 20개까지만 추가할 수 있습니다.');
+      return;
+    }
+    setExpenseRows([...expenseRows, {
+      id: Date.now().toString(),
+      date: today,
+      category: '생활비',
+      subCategory: '',
+      amount: '',
+      memo: ''
+    }]);
+  };
+
+  const removeExpenseRow = (id: string) => {
+    if (expenseRows.length <= 1) return;
+    setExpenseRows(expenseRows.filter(r => r.id !== id));
+  };
+
+  const updateExpenseRow = (id: string, field: keyof ExpenseRow, value: string) => {
+    setExpenseRows(expenseRows.map(r => {
+      if (r.id === id) {
+        const updated = { ...r, [field]: value };
+        if (field === 'category') updated.subCategory = '';
+        return updated;
+      }
+      return r;
+    }));
+  };
+
+  const handleExpenseSubmit = async () => {
+    const invalidRow = expenseRows.find(r => !r.category || !r.subCategory || !parseAmount(r.amount));
+    if (invalidRow) {
+      showToast('모든 항목의 세부 분류와 금액을 올바르게 입력해주세요.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('--- 지출 전송 데이터 ---');
+      console.log('타겟 월:', expenseMonth);
+      const dataToSubmit = expenseRows.map(r => ({
+        date: r.date,
+        type: '지출',
+        category: r.category,
+        content: r.memo ? `${r.subCategory} (${r.memo})` : r.subCategory,
+        amount: Number(parseAmount(r.amount))
+      }));
+      console.log('전송 내용:', dataToSubmit);
+      
+      showToast('지출 내역 전송 완료 (콘솔 확인)');
+      setExpenseRows([{
+        id: Date.now().toString(),
+        date: today,
+        category: '생활비',
+        subCategory: '',
+        amount: '',
+        memo: ''
+      }]);
+    } catch (err) {
+      showToast('전송 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isIncome) {
+    const months = Array.from({length: 12}, (_, i) => (i + 1).toString());
+
     return (
-      <div className="p-4 pt-8 pb-20 max-w-[480px] mx-auto">
+      <div className="p-4 pt-8 pb-32 max-w-[480px] mx-auto">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-text">지출 입력</h1>
-          <p className="text-text-light text-sm mt-1">지출 입력 기능은 아직 준비 중입니다.</p>
+          <div className="flex justify-between items-end">
+            <div>
+              <h1 className="text-2xl font-bold text-text">지출 입력</h1>
+              <p className="text-text-light text-sm mt-1">다수의 지출 내역을 한 번에 입력하세요</p>
+            </div>
+            <select
+              value={expenseMonth}
+              onChange={(e) => setExpenseMonth(e.target.value)}
+              className="bg-white border border-gray-200 text-gray-800 font-bold text-sm rounded-xl px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              {months.map(m => (
+                <option key={m} value={m}>{m}월 지출</option>
+              ))}
+            </select>
+          </div>
         </header>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center min-h-[300px] text-center">
-          <span className="text-3xl mb-3">🛒</span>
-          <h2 className="text-lg font-bold text-gray-800">지출 폼 준비 중</h2>
+
+        {/* Loading Overlay */}
+        {loading && (
+          <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <Loader2 className="animate-spin text-primary" size={40} />
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {expenseRows.map((row, index) => {
+            const subOptions = budgets.filter(b => b.category === row.category);
+            // 소분류 자동 선택 로직
+            if (!row.subCategory && subOptions.length > 0) {
+               updateExpenseRow(row.id, 'subCategory', subOptions[0].subCategory);
+            }
+
+            return (
+              <div key={row.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="bg-gray-100 text-gray-500 font-bold text-[10px] px-2 py-1 rounded-md">
+                    #{index + 1}
+                  </span>
+                  {expenseRows.length > 1 && (
+                    <button onClick={() => removeExpenseRow(row.id)} className="text-red-400 hover:text-red-500 transition-colors p-1">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+                
+                <div className="space-y-2.5">
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={row.date}
+                      onChange={(e) => updateExpenseRow(row.id, 'date', e.target.value)}
+                      className="bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-2 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 w-1/3"
+                    />
+                    <select
+                      value={row.category}
+                      onChange={(e) => updateExpenseRow(row.id, 'category', e.target.value)}
+                      className="bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-2 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 w-1/3"
+                    >
+                      <option value="교통비">교통비</option>
+                      <option value="생활비">생활비</option>
+                      <option value="예비비">예비비</option>
+                    </select>
+                    <select
+                      value={row.subCategory}
+                      onChange={(e) => updateExpenseRow(row.id, 'subCategory', e.target.value)}
+                      className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-2 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                      {subOptions.map(b => (
+                        <option key={b.subCategory} value={b.subCategory}>{b.subCategory}</option>
+                      ))}
+                      {subOptions.length === 0 && <option value="" disabled>항목 없음</option>}
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-[1.5]">
+                      <input
+                        type="text"
+                        value={row.amount}
+                        onChange={(e) => updateExpenseRow(row.id, 'amount', formatAmount(e.target.value))}
+                        placeholder="지출 금액"
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl pl-3 pr-8 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">원</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={row.memo}
+                      onChange={(e) => updateExpenseRow(row.id, 'memo', e.target.value)}
+                      placeholder="메모 (선택)"
+                      className="flex-[2] bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          <button
+            onClick={addExpenseRow}
+            className="w-full bg-gray-50 text-gray-600 border border-dashed border-gray-300 font-bold rounded-2xl py-4 text-[13px] flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
+          >
+            <Plus size={18} />
+            지출 항목 추가
+          </button>
         </div>
+
+        {/* 하단 고정 전송 버튼 영역 */}
+        <div className="fixed bottom-16 left-0 w-full max-w-[480px] left-1/2 -translate-x-1/2 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-40 pb-safe">
+          <button
+            onClick={handleExpenseSubmit}
+            className="w-full bg-primary text-white font-bold rounded-xl py-4 text-[15px] hover:bg-primary/90 transition-colors shadow-sm"
+          >
+            모두 전송하기 ({expenseRows.length}건)
+          </button>
+        </div>
+
+        {/* 토스트 알림 */}
+        {toastMessage && (
+          <div className="fixed bottom-36 left-1/2 -translate-x-1/2 bg-gray-800/90 backdrop-blur-sm text-white px-5 py-3 rounded-full text-[13px] font-medium shadow-xl z-50 flex items-center gap-2 transition-opacity duration-300 whitespace-nowrap">
+            <Check size={16} className="text-green-400" />
+            {toastMessage}
+          </div>
+        )}
       </div>
     );
   }
