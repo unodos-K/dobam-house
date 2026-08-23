@@ -1,9 +1,15 @@
-export default function InputPage() {
+interface InputPageProps {
+  type?: 'income' | 'expense';
+}
+
+export default function InputPage({ type }: InputPageProps) {
+  const title = type === 'income' ? '수입 입력' : type === 'expense' ? '지출 입력' : '내역 입력';
+  
   return (
     <div className="p-4 pt-8 pb-20">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-text">내역 입력</h1>
-        <p className="text-text-light text-sm mt-1">새로운 수입/지출을 기록하세요</p>
+        <h1 className="text-2xl font-bold text-text">{title}</h1>
+        <p className="text-text-light text-sm mt-1">새로운 {title}을 기록하세요</p>
       </header>
       
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center min-h-[300px] text-center">

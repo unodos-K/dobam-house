@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import BottomNav from './components/BottomNav';
-import Home from './pages/Home';
 import BudgetPage from './pages/BudgetPage';
 import HistoryPage from './pages/HistoryPage';
 import InputPage from './pages/InputPage';
@@ -31,12 +30,13 @@ function App() {
     <Router>
       <div className="pb-16 min-h-[100dvh] bg-gray-50/30">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/" element={<Navigate to="/budget" replace />} />
           <Route path="/history" element={<HistoryPage />} />
-          <Route path="/input" element={<InputPage />} />
-          {/* 알 수 없는 경로는 홈으로 리다이렉트 */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/input-income" element={<InputPage type="income" />} />
+          <Route path="/input-expense" element={<InputPage type="expense" />} />
+          {/* 알 수 없는 경로는 기본 화면으로 리다이렉트 */}
+          <Route path="*" element={<Navigate to="/budget" replace />} />
         </Routes>
       </div>
       <BottomNav />
