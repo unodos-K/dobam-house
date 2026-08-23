@@ -13,6 +13,15 @@ export default function InputPage({ type }: InputPageProps) {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [registeredBudgets, setRegisteredBudgets] = useState<string[]>([]);
+
+  // 금액 포맷팅 유틸리티
+  const formatAmount = (val: string) => {
+    const num = val.replace(/[^0-9]/g, '');
+    if (!num) return '';
+    return Number(num).toLocaleString();
+  };
+  const parseAmount = (val: string) => val.replace(/[^0-9]/g, '');
 
   useEffect(() => {
     if (isIncome) {
@@ -33,6 +42,13 @@ export default function InputPage({ type }: InputPageProps) {
   // [유형 1] 정기 예산 원클릭 입금
   // ============================
   const handleOneClickBudget = async (categoryName: string) => {
+    if (registeredBudgets.includes(categoryName)) {
+      if (!window.confirm(`${categoryName} 등록을 취소하시겠습니까?\n(현재는 UI 상태만 원복됩니다)`)) return;
+      setRegisteredBudgets(prev => prev.filter(c => c !== categoryName));
+      showToast(`${categoryName} 등록이 취소되었습니다.`);
+      return;
+    }
+
     if (!window.confirm(`${categoryName} 예산을 이번 달 수입으로 일괄 등록하시겠습니까?`)) return;
     
     const targetBudgets = budgets.filter(b => b.category === categoryName);
@@ -52,6 +68,7 @@ export default function InputPage({ type }: InputPageProps) {
           amount: b.amount
         })
       ));
+      setRegisteredBudgets(prev => [...prev, categoryName]);
       showToast(`${categoryName} 예산 일괄 등록이 완료되었습니다.`);
     } catch (err) {
       console.error(err);
@@ -68,7 +85,8 @@ export default function InputPage({ type }: InputPageProps) {
   const [interestCategory, setInterestCategory] = useState<string>('생활비 기타');
   
   const handleInterestSubmit = async () => {
-    if (!interestAmount || isNaN(Number(interestAmount))) {
+    const rawAmount = parseAmount(interestAmount);
+    if (!rawAmount || isNaN(Number(rawAmount))) {
       showToast('정확한 금액을 입력해주세요.');
       return;
     }
@@ -83,7 +101,7 @@ export default function InputPage({ type }: InputPageProps) {
         type: '수입',
         category: mainCategory,
         content: interestCategory,
-        amount: Number(interestAmount)
+        amount: Number(rawAmount)
       });
       showToast(`${interestCategory} 수입이 등록되었습니다.`);
       setInterestAmount('');
@@ -102,9 +120,20 @@ export default function InputPage({ type }: InputPageProps) {
   const [manualAmount, setManualAmount] = useState('');
   const [manualMemo, setManualMemo] = useState('');
 
+  // 대분류 변경 시 첫 번째 세부 항목으로 자동 설정
+  useEffect(() => {
+    const options = budgets.filter(b => b.category === manualCat);
+    if (options.length > 0) {
+      setManualSub(options[0].subCategory);
+    } else {
+      setManualSub('');
+    }
+  }, [manualCat, budgets]);
+
   const handleManualSubmit = async () => {
-    if (!manualSub || !manualAmount || isNaN(Number(manualAmount))) {
-      showToast('세부 항목명과 금액을 모두 올바르게 입력해주세요.');
+    const rawAmount = parseAmount(manualAmount);
+    if (!manualSub || !rawAmount || isNaN(Number(rawAmount))) {
+      showToast('세부 항목과 금액을 모두 올바르게 입력해주세요.');
       return;
     }
     
@@ -115,10 +144,10 @@ export default function InputPage({ type }: InputPageProps) {
         type: '수입',
         category: manualCat,
         content: manualMemo ? `${manualSub} (${manualMemo})` : manualSub,
-        amount: Number(manualAmount)
+        amount: Number(rawAmount)
       });
       showToast('기타 수입이 성공적으로 등록되었습니다.');
-      setManualSub('');
+      // 금액과 메모만 초기화
       setManualAmount('');
       setManualMemo('');
     } catch (err) {
@@ -167,15 +196,22 @@ export default function InputPage({ type }: InputPageProps) {
             이번 달 정기 예산 항목들을 수입으로 일괄 자동 등록합니다.
           </p>
           <div className="grid grid-cols-3 gap-2">
-            {['교통비', '생활비', '예비비'].map(cat => (
-              <button
-                key={cat}
-                onClick={() => handleOneClickBudget(cat)}
-                className="py-3 px-2 rounded-xl bg-blue-50 text-blue-600 font-bold text-[13px] hover:bg-blue-100 transition-colors border border-blue-100"
-              >
-                {cat} 일괄등록
-              </button>
-            ))}
+            {['교통비', '생활비', '예비비'].map(cat => {
+              const isRegistered = registeredBudgets.includes(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => handleOneClickBudget(cat)}
+                  className={`py-3 px-2 rounded-xl font-bold text-[13px] transition-colors border ${
+                    isRegistered 
+                      ? 'bg-gray-100 text-gray-500 border-gray-200' 
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100'
+                  }`}
+                >
+                  {isRegistered ? '취소' : cat}
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -196,9 +232,9 @@ export default function InputPage({ type }: InputPageProps) {
             </select>
             <div className="relative flex-1">
               <input
-                type="number"
+                type="text"
                 value={interestAmount}
-                onChange={(e) => setInterestAmount(e.target.value)}
+                onChange={(e) => setInterestAmount(formatAmount(e.target.value))}
                 placeholder="금액 입력"
                 className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl pl-3 pr-8 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
@@ -229,19 +265,29 @@ export default function InputPage({ type }: InputPageProps) {
                 <option value="생활비">생활비</option>
                 <option value="예비비">예비비</option>
               </select>
-              <input
-                type="text"
+              <select
                 value={manualSub}
                 onChange={(e) => setManualSub(e.target.value)}
-                placeholder="항목명 (예: 당근마켓)"
                 className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
+              >
+                {budgets
+                  .filter(b => b.category === manualCat)
+                  .map(b => (
+                    <option key={b.subCategory} value={b.subCategory}>
+                      {b.subCategory}
+                    </option>
+                  ))
+                }
+                {budgets.filter(b => b.category === manualCat).length === 0 && (
+                  <option value="" disabled>항목 없음</option>
+                )}
+              </select>
             </div>
             <div className="relative">
               <input
-                type="number"
+                type="text"
                 value={manualAmount}
-                onChange={(e) => setManualAmount(e.target.value)}
+                onChange={(e) => setManualAmount(formatAmount(e.target.value))}
                 placeholder="수입 금액"
                 className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />

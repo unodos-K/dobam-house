@@ -23,6 +23,16 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* 숫자 인풋 화살표 숨김 */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+
   #root {
     max-width: 480px;
     margin: 0 auto;
