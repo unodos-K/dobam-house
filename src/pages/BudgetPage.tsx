@@ -221,11 +221,13 @@ export default function BudgetPage() {
   }
 
   return (
-    <div className="p-4 pt-8 pb-20" onClick={handleBackgroundClick}>
-      <header className="mb-4">
+    <div className="pb-20 bg-gray-50/30" onClick={handleBackgroundClick}>
+      <header className="sticky top-0 z-40 bg-[#f8f9fa]/90 backdrop-blur-md px-4 pt-8 pb-4 mb-4 border-b border-gray-100/80 shadow-sm flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-text">예산 관리</h1>
-        <p className="text-text-light text-sm mt-1">항목별 예산 및 계좌 정보</p>
+        <p className="text-text-light text-sm">항목별 예산 및 계좌 정보</p>
       </header>
+
+      <div className="px-4">
 
       {/* 차트 영역 (플랫 스타일 Pie Chart) */}
       <div className="bg-white pt-4 pb-2 rounded-2xl shadow-sm border border-gray-50 mb-4 h-64 relative overflow-hidden">
@@ -364,6 +366,7 @@ export default function BudgetPage() {
           {toastMessage}
         </div>
       )}
+      </div>
     </div>
   );
 }

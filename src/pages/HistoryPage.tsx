@@ -285,8 +285,8 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="p-4 pt-8 pb-24">
-      <header className="mb-6 flex flex-col gap-4">
+    <div className="pb-24 bg-gray-50/30">
+      <header className="sticky top-0 z-40 bg-[#f8f9fa]/90 backdrop-blur-md px-4 pt-8 pb-4 mb-4 border-b border-gray-100/80 flex flex-col gap-4 shadow-sm">
         <div className="flex justify-between items-end">
           <div>
             <h1 className="text-2xl font-bold text-text">내역 조회</h1>
@@ -314,8 +314,10 @@ export default function HistoryPage() {
         </div>
       </header>
 
-      {/* 뷰 렌더링 분기 */}
-      {viewMode === 'matrix' ? renderMonthlySummaryView() : renderCardsView()}
+      <div className="px-4">
+        {/* 뷰 렌더링 분기 */}
+        {viewMode === 'matrix' ? renderMonthlySummaryView() : renderCardsView()}
+      </div>
     </div>
   );
 }

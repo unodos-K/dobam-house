@@ -258,8 +258,8 @@ export default function InputPage({ type }: InputPageProps) {
     const months = Array.from({length: 12}, (_, i) => (i + 1).toString());
 
     return (
-      <div className="p-4 pt-8 pb-32 max-w-[480px] mx-auto">
-        <header className="mb-6">
+      <div className="pb-32 bg-gray-50/30">
+        <header className="sticky top-0 z-40 bg-[#f8f9fa]/90 backdrop-blur-md px-4 pt-8 pb-4 mb-4 border-b border-gray-100/80 shadow-sm flex flex-col gap-1 max-w-[480px] mx-auto w-full">
           <div className="flex justify-between items-end">
             <div>
               <h1 className="text-2xl font-bold text-text">지출 입력</h1>
@@ -276,6 +276,8 @@ export default function InputPage({ type }: InputPageProps) {
             </select>
           </div>
         </header>
+
+        <div className="px-4 max-w-[480px] mx-auto w-full">
 
         {/* Loading Overlay */}
         {loading && <LoadingSpinner text="데이터 전송 중..." overlay={true} />}
@@ -379,18 +381,20 @@ export default function InputPage({ type }: InputPageProps) {
             {toastMessage}
           </div>
         )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 pt-8 pb-24 max-w-[480px] mx-auto">
-      <header className="mb-6">
+    <div className="pb-24 bg-gray-50/30">
+      <header className="sticky top-0 z-40 bg-[#f8f9fa]/90 backdrop-blur-md px-4 pt-8 pb-4 mb-4 border-b border-gray-100/80 shadow-sm flex flex-col gap-1 max-w-[480px] mx-auto w-full">
         <h1 className="text-2xl font-bold text-text">수입 입력</h1>
         <p className="text-text-light text-sm mt-1">다양한 유형의 수입을 편리하게 기록하세요</p>
       </header>
 
-      <div className="space-y-6 relative">
+      <div className="px-4 max-w-[480px] mx-auto w-full">
+        <div className="space-y-6 relative">
         {/* Loading Overlay */}
         {loading && <LoadingSpinner text="데이터 전송 중..." overlay={true} />}
 
@@ -521,6 +525,7 @@ export default function InputPage({ type }: InputPageProps) {
           {toastMessage}
         </div>
       )}
+      </div>
     </div>
   );
 }
