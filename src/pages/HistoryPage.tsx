@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getDashboard } from '../services/api';
 import { DashboardData, DashboardCategory } from '../types';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 type ViewMode = 'month' | 'cumulative' | 'matrix';
 
@@ -36,7 +37,7 @@ export default function HistoryPage() {
   }, []);
 
   if (loading) {
-    return <div className="p-4 pt-8 text-center text-text-light">데이터를 불러오는 중...</div>;
+    return <LoadingSpinner text="내역 데이터를 불러오는 중..." />;
   }
 
   if (!data || Object.keys(data).length === 0) {

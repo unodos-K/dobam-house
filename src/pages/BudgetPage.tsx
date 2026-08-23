@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { Copy, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { getBudgets } from '../services/api';
 import { Budget } from '../types';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 // 기본 색상 팔레트
 const COLORS = ['#f43f5e', '#fcd34d', '#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#14b8a6'];
@@ -216,7 +217,7 @@ export default function BudgetPage() {
   };
 
   if (loading) {
-    return <div className="p-4 pt-8 text-center text-text-light">예산 데이터를 불러오는 중...</div>;
+    return <LoadingSpinner text="예산 데이터를 불러오는 중..." />;
   }
 
   return (

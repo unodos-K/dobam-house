@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getBudgets, addTransaction } from '../services/api';
 import { Budget } from '../types';
-import { Check, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Check, Plus, Trash2 } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface InputPageProps {
   type?: 'income' | 'expense';
@@ -269,11 +270,7 @@ export default function InputPage({ type }: InputPageProps) {
         </header>
 
         {/* Loading Overlay */}
-        {loading && (
-          <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center">
-            <Loader2 className="animate-spin text-primary" size={40} />
-          </div>
-        )}
+        {loading && <LoadingSpinner text="데이터 전송 중..." overlay={true} />}
 
         <div className="space-y-4">
           {expenseRows.map((row, index) => {
@@ -387,11 +384,7 @@ export default function InputPage({ type }: InputPageProps) {
 
       <div className="space-y-6 relative">
         {/* Loading Overlay */}
-        {loading && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
-            <Loader2 className="animate-spin text-primary" size={36} />
-          </div>
-        )}
+        {loading && <LoadingSpinner text="데이터 전송 중..." overlay={true} />}
 
         {/* 유형 1: 정기 예산 원클릭 */}
         <section className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
