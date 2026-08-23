@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getBudgets, addTransaction } from '../services/api';
+import { getBudgets, appendIncome, appendExpense } from '../services/api';
 import { Budget } from '../types';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -58,15 +58,15 @@ export default function InputPage({ type }: InputPageProps) {
 
     setLoading(true);
     try {
-      await Promise.all(targetBudgets.map(b => 
-        addTransaction({
-          date: today,
-          type: '수입',
-          category: categoryName,
-          content: b.subCategory,
-          amount: b.amount
-        })
-      ));
+      const dataToSubmit = targetBudgets.map(b => ({
+        month: (new Date().getMonth() + 1).toString(),
+        category: categoryName,
+        subCategory: b.subCategory,
+        amount: b.amount,
+        memo: '정기 예산 원클릭'
+      }));
+      await appendIncome(dataToSubmit);
+      
       setRegisteredBudgets(prev => [...prev, categoryName]);
       showToast(`${categoryName} 예산 일괄 등록이 완료되었습니다.`);
     } catch (err) {
@@ -95,13 +95,13 @@ export default function InputPage({ type }: InputPageProps) {
 
     setLoading(true);
     try {
-      await addTransaction({
-        date: today,
-        type: '수입',
+      await appendIncome([{
+        month: (new Date().getMonth() + 1).toString(),
         category: mainCategory,
-        content: interestCategory,
-        amount: Number(rawAmount)
-      });
+        subCategory: interestCategory,
+        amount: Number(rawAmount),
+        memo: ''
+      }]);
       showToast(`${interestCategory} 수입이 등록되었습니다.`);
       setInterestAmount('');
     } catch (err) {
@@ -138,13 +138,13 @@ export default function InputPage({ type }: InputPageProps) {
     
     setLoading(true);
     try {
-      await addTransaction({
-        date: today,
-        type: '수입',
+      await appendIncome([{
+        month: (new Date().getMonth() + 1).toString(),
         category: manualCat,
-        content: manualMemo ? `${manualSub} (${manualMemo})` : manualSub,
-        amount: Number(rawAmount)
-      });
+        subCategory: manualSub,
+        amount: Number(rawAmount),
+        memo: manualMemo
+      }]);
       showToast('기타 수입이 성공적으로 등록되었습니다.');
       // 금액과 메모만 초기화
       setManualAmount('');
@@ -219,18 +219,17 @@ export default function InputPage({ type }: InputPageProps) {
 
     setLoading(true);
     try {
-      console.log('--- 지출 전송 데이터 ---');
-      console.log('타겟 월:', expenseMonth);
       const dataToSubmit = expenseRows.map(r => ({
+        month: expenseMonth,
         date: r.date,
-        type: '지출',
         category: r.category,
-        content: r.memo ? `${r.subCategory} (${r.memo})` : r.subCategory,
-        amount: Number(parseAmount(r.amount))
+        subCategory: r.subCategory,
+        amount: Number(parseAmount(r.amount)),
+        memo: r.memo
       }));
-      console.log('전송 내용:', dataToSubmit);
+      await appendExpense(dataToSubmit);
       
-      showToast('지출 내역 전송 완료 (콘솔 확인)');
+      showToast('지출 내역 전송 성공!');
       setExpenseRows([{
         id: Date.now().toString(),
         date: today,

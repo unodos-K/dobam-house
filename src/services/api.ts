@@ -114,6 +114,50 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>): Prom
   }
 };
 
+export const appendIncome = async (dataArray: any[]) => {
+  if (USE_MOCK) {
+    console.log('[API Mock] appendIncome 호출됨', dataArray);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return;
+  }
+  
+  try {
+    const response = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'appendIncome', data: dataArray })
+    });
+    if (!response.ok) throw new Error('Network response error');
+    const result = await response.json();
+    if (result.status !== 'success') throw new Error('Failed to append income');
+  } catch (err) {
+    console.error('API Error:', err);
+    throw err;
+  }
+};
+
+export const appendExpense = async (dataArray: any[]) => {
+  if (USE_MOCK) {
+    console.log('[API Mock] appendExpense 호출됨', dataArray);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return;
+  }
+  
+  try {
+    const response = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'appendExpense', data: dataArray })
+    });
+    if (!response.ok) throw new Error('Network response error');
+    const result = await response.json();
+    if (result.status !== 'success') throw new Error('Failed to append expense');
+  } catch (err) {
+    console.error('API Error:', err);
+    throw err;
+  }
+};
+
 export const getDashboard = async (): Promise<DashboardData> => {
   if (USE_MOCK) {
     console.log('[API Mock] getDashboard 호출됨');
