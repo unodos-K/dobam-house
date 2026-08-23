@@ -1,0 +1,20 @@
+export default function InputPage() {
+  return (
+    <div className="p-4 pt-8 pb-20">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-text">내역 입력</h1>
+        <p className="text-text-light text-sm mt-1">새로운 수입/지출을 기록하세요</p>
+      </header>
+      
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-center min-h-[300px] text-center">
+        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+          <span className="text-2xl">✍️</span>
+        </div>
+        <h2 className="text-lg font-bold text-gray-800 mb-2">입력 폼 준비 중</h2>
+        <p className="text-sm text-gray-500 max-w-[200px] leading-relaxed">
+          구글 시트(GAS 웹앱)로 데이터를 전송하는 깔끔한 입력 폼이 이곳에 들어올 예정입니다.
+        </p>
+      </div>
+    </div>
+  );
+}

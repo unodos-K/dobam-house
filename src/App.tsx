@@ -1,0 +1,47 @@
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import BottomNav from './components/BottomNav';
+import Home from './pages/Home';
+import BudgetPage from './pages/BudgetPage';
+import HistoryPage from './pages/HistoryPage';
+import InputPage from './pages/InputPage';
+import AuthPage from './pages/AuthPage';
+
+function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const auth = localStorage.getItem('isAuthenticated');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+    }
+    setLoading(false);
+  }, []);
+
+  if (loading) return null;
+
+  // 인증 전이면 AuthPage만 보여줌
+  if (!isAuthenticated) {
+    return <AuthPage onLogin={() => setIsAuthenticated(true)} />;
+  }
+
+  // 인증 완료 후 메인 앱 렌더링
+  return (
+    <Router>
+      <div className="pb-16 min-h-[100dvh] bg-gray-50/30">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/input" element={<InputPage />} />
+          {/* 알 수 없는 경로는 홈으로 리다이렉트 */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+      <BottomNav />
+    </Router>
+  );
+}
+
+export default App;
