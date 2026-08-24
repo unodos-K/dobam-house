@@ -182,35 +182,41 @@ export const getDashboard = async (): Promise<DashboardData> => {
       }
       if (!month) return; // skip if no month
 
-      if (!dashboard[month]) dashboard[month] = {};
+      // Helper function to update a specific month key in dashboard
+      const updateDashboardForMonth = (mKey: string) => {
+        if (!dashboard[mKey]) dashboard[mKey] = {};
 
-      if (!dashboard[month][t.category]) {
-        dashboard[month][t.category] = {
-          totalIncome: 0,
-          totalExpense: 0,
-          balance: 0,
-          items: []
-        };
-      }
+        if (!dashboard[mKey][t.category]) {
+          dashboard[mKey][t.category] = {
+            totalIncome: 0,
+            totalExpense: 0,
+            balance: 0,
+            items: []
+          };
+        }
 
-      const catData = dashboard[month][t.category];
-      const subCatName = t.subCategory || t.subCategory || '기타';
-      let subItem = catData.items.find(item => item.name === subCatName);
-      if (!subItem) {
-        subItem = { name: subCatName, income: 0, expense: 0, balance: 0 };
-        catData.items.push(subItem);
-      }
+        const catData = dashboard[mKey][t.category];
+        const subCatName = t.subCategory || t.subCategory || '기타';
+        let subItem = catData.items.find(item => item.name === subCatName);
+        if (!subItem) {
+          subItem = { name: subCatName, income: 0, expense: 0, balance: 0 };
+          catData.items.push(subItem);
+        }
 
-      if (t.type === '수입') {
-        catData.totalIncome += t.amount;
-        subItem.income += t.amount;
-      } else {
-        catData.totalExpense += t.amount;
-        subItem.expense += t.amount;
-      }
+        if (t.type === '수입') {
+          catData.totalIncome += t.amount;
+          subItem.income += t.amount;
+        } else {
+          catData.totalExpense += t.amount;
+          subItem.expense += t.amount;
+        }
 
-      catData.balance = catData.totalIncome - catData.totalExpense;
-      subItem.balance = subItem.income - subItem.expense;
+        catData.balance = catData.totalIncome - catData.totalExpense;
+        subItem.balance = subItem.income - subItem.expense;
+      };
+
+      updateDashboardForMonth(month);
+      updateDashboardForMonth('all'); // Add cumulative balance
     });
 
     return dashboard;
