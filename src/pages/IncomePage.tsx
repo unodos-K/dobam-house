@@ -220,7 +220,7 @@ export default function IncomePage() {
       </header>
 
       <div className="px-4 max-w-[480px] mx-auto w-full">
-        <BalanceWidget dashboardData={dashboardData} month="all" />
+        <BalanceWidget dashboardData={dashboardData} month={budgetMonth} />
         <div className="space-y-6 relative">
           {loading && <LoadingSpinner text="데이터 전송 중..." overlay={true} />}
 

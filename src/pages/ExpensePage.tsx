@@ -149,7 +149,7 @@ export default function ExpensePage() {
       </header>
 
       <div className="px-4 max-w-[480px] mx-auto w-full">
-        <BalanceWidget dashboardData={dashboardData} month="all" />
+        <BalanceWidget dashboardData={dashboardData} month={expenseMonth} />
         {loading && <LoadingSpinner text="데이터 전송 중..." overlay={true} />}
 
         <div className="space-y-4 relative">
