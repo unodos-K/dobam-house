@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getBudgets, getDashboard, appendIncome, appendExpense } from '../services/api';
-import { Budget, DashboardData } from '../types';
+import { getBudgets, getDashboard, appendIncome, appendExpense, getTransactions } from '../services/api';
+import { Budget, DashboardData, Transaction } from '../types';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -16,6 +16,13 @@ export default function InputPage({ type }: InputPageProps) {
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
+  // 리스트 및 필터 상태
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const currentM = (new Date().getMonth() + 1).toString();
+  const [filterMonth, setFilterMonth] = useState<string>(currentM);
+  const [filterCat, setFilterCat] = useState<string>('전체');
+  const [filterSubCat, setFilterSubCat] = useState<string>('전체');
+
   // 정기예산 월 선택
   const [budgetMonth, setBudgetMonth] = useState((new Date().getMonth() + 1).toString());
 
@@ -38,10 +45,122 @@ export default function InputPage({ type }: InputPageProps) {
 
   useEffect(() => {
     getBudgets().then(setBudgets).catch(console.error);
+    getTransactions().then(setTransactions).catch(console.error);
     if (isIncome) {
       getDashboard().then(setDashboardData).catch(console.error);
     }
   }, [isIncome]);
+
+  // 필터 로직
+  useEffect(() => {
+    setFilterSubCat('전체');
+  }, [filterCat]);
+
+  const filterSubOptions = filterCat === '전체' ? [] : getSubOptionsByCategory(filterCat);
+
+  const filteredTransactions = transactions.filter(t => {
+    if (isIncome && t.type !== '수입') return false;
+    if (!isIncome && t.type !== '지출') return false;
+    
+    if (filterMonth !== '전체') {
+      const dateObj = new Date(t.date);
+      if (!isNaN(dateObj.getTime())) {
+        if ((dateObj.getMonth() + 1).toString() !== filterMonth) return false;
+      }
+    }
+    
+    if (filterCat !== '전체' && t.category !== filterCat) return false;
+    if (filterSubCat !== '전체' && t.content !== filterSubCat) return false;
+    return true;
+  });
+
+  const filteredTotal = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+  const renderTransactionList = () => (
+    <div className="mt-12 space-y-4">
+      <h2 className="text-[15px] font-bold text-gray-800 px-1 flex items-center gap-2">
+        <span>📋</span> 최근 등록 내역
+      </h2>
+      
+      {/* 3단 필터 */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+        <div className="flex gap-2">
+          {/* 1) 월별 필터 */}
+          <select
+            value={filterMonth}
+            onChange={e => setFilterMonth(e.target.value)}
+            className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] font-medium rounded-xl px-2 py-2 focus:outline-none"
+          >
+            <option value="전체">전체 월</option>
+            {Array.from({length: 12}, (_, i) => (i + 1).toString()).map(m => (
+              <option key={m} value={m}>{m}월</option>
+            ))}
+          </select>
+          
+          {/* 2) 대분류 필터 */}
+          <select
+            value={filterCat}
+            onChange={e => setFilterCat(e.target.value)}
+            className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] font-medium rounded-xl px-2 py-2 focus:outline-none"
+          >
+            <option value="전체">전체 항목</option>
+            <option value="교통비">교통비</option>
+            <option value="생활비">생활비</option>
+            <option value="예비비">예비비</option>
+          </select>
+
+          {/* 3) 세부항목 필터 */}
+          <select
+            value={filterSubCat}
+            onChange={e => setFilterSubCat(e.target.value)}
+            disabled={filterCat === '전체'}
+            className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] font-medium rounded-xl px-2 py-2 focus:outline-none disabled:opacity-50"
+          >
+            <option value="전체">전체 세부</option>
+            {filterSubOptions.map(sub => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
+          </select>
+        </div>
+        
+        {/* 요약 카드 */}
+        <div className={`p-3 rounded-xl border flex items-center justify-between shadow-sm ${
+          isIncome ? 'bg-blue-50/40 border-blue-100 text-blue-700' : 'bg-red-50/40 border-red-100 text-red-700'
+        }`}>
+          <span className="text-[13px] font-bold flex items-center gap-1.5">
+            🔍 검색된 내역 합계
+          </span>
+          <span className="text-[15px] font-extrabold tracking-tight">
+            {filteredTotal.toLocaleString()}원
+          </span>
+        </div>
+      </div>
+
+      {/* 리스트 */}
+      <div className="space-y-2 pb-10">
+        {filteredTransactions.length === 0 ? (
+          <div className="text-center py-8 text-gray-400 text-sm bg-white rounded-2xl border border-gray-100 border-dashed">
+            해당하는 내역이 없습니다.
+          </div>
+        ) : (
+          filteredTransactions.map(t => (
+            <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center hover:bg-gray-50 transition-colors">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{t.category}</span>
+                  <span className="text-[11px] text-gray-400 font-medium">{t.date}</span>
+                </div>
+                <div className="text-[13px] font-bold text-gray-700">{t.content.replace(/☑/g, '').trim()}</div>
+              </div>
+              <div className={`font-bold text-[14px] ${isIncome ? 'text-blue-500' : 'text-red-500'}`}>
+                {isIncome ? '+' : '-'}{t.amount.toLocaleString()}원
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 
   // 입금 완료 상태 판별 (API 데이터 기반)
   const isBudgetRegistered = (cat: string) => {
@@ -90,9 +209,10 @@ export default function InputPage({ type }: InputPageProps) {
         }));
         await appendIncome(dataToSubmit);
         
-        // 대시보드 데이터 새로고침
+        // 대시보드 데이터 및 내역 새로고침
         const newData = await getDashboard();
         setDashboardData(newData);
+        getTransactions().then(setTransactions).catch(console.error);
         showToast(`${budgetMonth}월 ${categoryName} 입금이 취소되었습니다.`);
       } catch (err) {
         showToast('취소 처리 중 오류가 발생했습니다.');
@@ -117,6 +237,7 @@ export default function InputPage({ type }: InputPageProps) {
       
       const newData = await getDashboard();
       setDashboardData(newData);
+      getTransactions().then(setTransactions).catch(console.error);
       showToast(`${budgetMonth}월 ${categoryName} 예산 입금이 완료되었습니다.`);
     } catch (err) {
       console.error(err);
@@ -153,6 +274,7 @@ export default function InputPage({ type }: InputPageProps) {
       }]);
       showToast(`${interestCategory} 수입이 등록되었습니다.`);
       setInterestAmount('');
+      getTransactions().then(setTransactions).catch(console.error);
     } catch (err) {
       showToast('등록 중 오류가 발생했습니다.');
     } finally {
@@ -198,6 +320,7 @@ export default function InputPage({ type }: InputPageProps) {
       // 금액과 메모만 초기화
       setManualAmount('');
       setManualMemo('');
+      getTransactions().then(setTransactions).catch(console.error);
     } catch (err) {
       showToast('등록 중 오류가 발생했습니다.');
     } finally {
@@ -287,6 +410,7 @@ export default function InputPage({ type }: InputPageProps) {
         amount: '',
         memo: ''
       }]);
+      getTransactions().then(setTransactions).catch(console.error);
     } catch (err) {
       showToast('전송 중 오류가 발생했습니다.');
     } finally {
@@ -403,6 +527,8 @@ export default function InputPage({ type }: InputPageProps) {
             지출 항목 추가
           </button>
         </div>
+
+        {renderTransactionList()}
 
         {/* 하단 고정 전송 버튼 영역 */}
         <div className="fixed bottom-16 left-0 w-full max-w-[480px] left-1/2 -translate-x-1/2 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-40 pb-safe">
@@ -567,6 +693,8 @@ export default function InputPage({ type }: InputPageProps) {
             </button>
           </div>
         </section>
+        
+        {renderTransactionList()}
       </div>
 
       {/* 토스트 알림 */}
