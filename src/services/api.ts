@@ -32,11 +32,21 @@ export const getBudgets = async (): Promise<Budget[]> => {
   try {
     const { data, error } = await supabase.from('budgets').select('*');
     if (error) throw error;
-    // 만약 budgets 테이블이 비어있다면 mockBudgets를 기본으로 삽입하고 반환할 수도 있음
+    
     if (!data || data.length === 0) {
        return mockBudgets;
     }
-    return data as Budget[];
+    
+    // 마이그레이션 중복 방지를 위한 데이터 덮어쓰기(Deduplication) 로직
+    const uniqueBudgetsMap = new Map();
+    data.forEach(item => {
+      const key = `${item.category}-${item.subCategory}`;
+      if (!uniqueBudgetsMap.has(key)) {
+        uniqueBudgetsMap.set(key, item);
+      }
+    });
+    
+    return Array.from(uniqueBudgetsMap.values()) as Budget[];
   } catch (error) {
     console.error('API Error (getBudgets):', error);
     return mockBudgets; // 에러 시 폴백
