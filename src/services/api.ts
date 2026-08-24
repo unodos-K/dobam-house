@@ -1,9 +1,8 @@
+import { supabase } from '../lib/supabase';
 import { Transaction, Budget, DashboardData } from '../types';
 
-// GAS 웹 앱 배포 URL (배포 후 .env 파일에 설정)
-const GAS_URL = import.meta.env.VITE_GAS_WEB_APP_URL;
 // 환경 변수로 Mock 사용 여부 강제 제어 가능
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || !GAS_URL;
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const MOCK_STORAGE_KEY = 'dobam_transactions_mock';
 
@@ -18,7 +17,6 @@ const saveMockData = (data: Transaction[]) => {
   localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(data));
 };
 
-// 예산 Mock 데이터
 const mockBudgets: Budget[] = [
   { category: '고정지출', bank: '신한은행', account: '110-123-456789', subCategory: '관리비', amount: 150000 },
   { category: '고정지출', bank: '신한은행', account: '110-123-456789', subCategory: '통신비', amount: 100000 },
@@ -29,132 +27,77 @@ const mockBudgets: Budget[] = [
 ];
 
 export const getBudgets = async (): Promise<Budget[]> => {
-  if (USE_MOCK) {
-    console.log('[API Mock] getBudgets 호출됨');
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockBudgets;
-  }
+  if (USE_MOCK) return mockBudgets;
 
   try {
-    const response = await fetch(`${GAS_URL}?action=getBudgets`);
-    if (!response.ok) throw new Error('Network response was not ok');
-    const result = await response.json();
-    if (result.status === 'success') {
-      return result.data as Budget[];
-    } else {
-      throw new Error(result.message || 'Failed to fetch budgets');
+    const { data, error } = await supabase.from('budgets').select('*');
+    if (error) throw error;
+    // 만약 budgets 테이블이 비어있다면 mockBudgets를 기본으로 삽입하고 반환할 수도 있음
+    if (!data || data.length === 0) {
+       return mockBudgets;
     }
+    return data as Budget[];
   } catch (error) {
-    console.error('API Error:', error);
-    throw error;
+    console.error('API Error (getBudgets):', error);
+    return mockBudgets; // 에러 시 폴백
   }
 };
 
 export const getTransactions = async (): Promise<Transaction[]> => {
-  if (USE_MOCK) {
-    console.log('[API Mock] getTransactions 호출됨');
-    // 실제 통신처럼 약간의 지연 추가
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return getMockData();
-  }
+  if (USE_MOCK) return getMockData();
 
   try {
-    const response = await fetch(`${GAS_URL}?action=getTransactions`);
-    if (!response.ok) throw new Error('Network response was not ok');
-    const result = await response.json();
-    if (result.status === 'success') {
-      return result.data as Transaction[];
-    } else {
-      throw new Error(result.message || 'Failed to fetch transactions');
-    }
+    const { data: expenses, error: expError } = await supabase.from('expenses').select('*');
+    if (expError) throw expError;
+
+    const { data: incomes, error: incError } = await supabase.from('incomes').select('*');
+    if (incError) throw incError;
+
+    const formattedExpenses = (expenses || []).map(e => ({
+      ...e,
+      type: '지출' as const,
+      subCategory: e.subCategory,
+      content: e.memo || '' // Ensure content exists
+    }));
+
+    const formattedIncomes = (incomes || []).map(i => ({
+      ...i,
+      type: '수입' as const,
+      subCategory: i.subCategory,
+      content: i.memo || '' // Ensure content exists
+    }));
+
+    const allTransactions = [...formattedExpenses, ...formattedIncomes];
+    allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return allTransactions as unknown as Transaction[];
   } catch (error) {
-    console.error('API Error:', error);
-    throw error;
-  }
-};
-
-export const addTransaction = async (transaction: Omit<Transaction, 'id'>): Promise<Transaction> => {
-  const newTransaction: Transaction = {
-    ...transaction,
-    id: Date.now().toString(), // 임시 고유 ID 발급
-  };
-
-  if (USE_MOCK) {
-    console.log('[API Mock] addTransaction 호출됨', newTransaction);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const data = getMockData();
-    data.push(newTransaction);
-    saveMockData(data);
-    return newTransaction;
-  }
-
-  try {
-    const response = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8', 
-        // 주의: GAS CORS 이슈 방지를 위해 보통 text/plain을 씁니다.
-      },
-      body: JSON.stringify({
-        action: 'addTransaction',
-        data: newTransaction
-      }),
-    });
-    
-    if (!response.ok) throw new Error('Network response was not ok');
-    const result = await response.json();
-    if (result.status === 'success') {
-      return newTransaction;
-    } else {
-      throw new Error(result.message || 'Failed to add transaction');
-    }
-  } catch (error) {
-    console.error('API Error:', error);
+    console.error('API Error (getTransactions):', error);
     throw error;
   }
 };
 
 export const appendIncome = async (dataArray: any[]) => {
-  if (USE_MOCK) {
-    console.log('[API Mock] appendIncome 호출됨', dataArray);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return;
-  }
-  
+  if (USE_MOCK) return;
+
   try {
-    const response = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'appendIncome', data: dataArray })
-    });
-    if (!response.ok) throw new Error('Network response error');
-    const result = await response.json();
-    if (result.status !== 'success') throw new Error('Failed to append income');
-  } catch (err) {
-    console.error('API Error:', err);
-    throw err;
+    const { error } = await supabase.from('incomes').insert(dataArray);
+    if (error) throw error;
+  } catch (error) {
+    console.error('API Error (appendIncome):', error);
+    throw error;
   }
 };
 
 export const appendExpense = async (dataArray: any[]) => {
-  if (USE_MOCK) {
-    console.log('[API Mock] appendExpense 호출됨', dataArray);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return;
-  }
-  
+  if (USE_MOCK) return;
+
   try {
-    const response = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'appendExpense', data: dataArray })
-    });
-    if (!response.ok) throw new Error('Network response error');
-    const result = await response.json();
-    if (result.status !== 'success') throw new Error('Failed to append expense');
-  } catch (err) {
-    console.error('API Error:', err);
-    throw err;
+    const { error } = await supabase.from('expenses').insert(dataArray);
+    if (error) throw error;
+  } catch (error) {
+    console.error('API Error (appendExpense):', error);
+    throw error;
   }
 };
 
@@ -166,17 +109,15 @@ export const deleteTransaction = async (id: string) => {
   }
   
   try {
-    const response = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'deleteTransaction', data: { id } })
-    });
-    if (!response.ok) throw new Error('Network response error');
-    const result = await response.json();
-    if (result.status !== 'success') throw new Error('Failed to delete transaction');
-  } catch (err) {
-    console.error('API Error:', err);
-    throw err;
+    // We don't know if it's income or expense, try both
+    const { error: expError } = await supabase.from('expenses').delete().eq('id', id);
+    if (expError) throw expError;
+
+    const { error: incError } = await supabase.from('incomes').delete().eq('id', id);
+    if (incError) throw incError;
+  } catch (error) {
+    console.error('API Error (deleteTransaction):', error);
+    throw error;
   }
 };
 
@@ -188,83 +129,83 @@ export const updateTransaction = async (transaction: Transaction) => {
   }
   
   try {
-    const response = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateTransaction', data: transaction })
-    });
-    if (!response.ok) throw new Error('Network response error');
-    const result = await response.json();
-    if (result.status !== 'success') throw new Error('Failed to update transaction');
+    const { id, type, content, ...rest } = transaction; // content is extra for supabase
+    const table = type === '지출' ? 'expenses' : 'incomes';
+    
+    // We update everything except type and content
+    const { error } = await supabase.from(table).update(rest).eq('id', id);
+    if (error) throw error;
+    
     return transaction;
-  } catch (err) {
-    console.error('API Error:', err);
-    throw err;
+  } catch (error) {
+    console.error('API Error (updateTransaction):', error);
+    throw error;
   }
 };
 
 export const getDashboard = async (): Promise<DashboardData> => {
   if (USE_MOCK) {
-    console.log('[API Mock] getDashboard 호출됨');
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // 임시 모크 데이터
-    const mockDashboard: DashboardData = {
-      "1": {
-        "교통비": {
-          totalIncome: 100000,
-          totalExpense: 85000,
-          balance: 15000,
-          items: [
-            { name: "대중교통", income: 50000, expense: 40000, balance: 10000 },
-            { name: "유류비", income: 50000, expense: 45000, balance: 5000 }
-          ]
-        },
-        "생활비": {
-          totalIncome: 500000,
-          totalExpense: 520000,
-          balance: -20000,
-          items: [
-            { name: "식비", income: 300000, expense: 350000, balance: -50000 },
-            { name: "고양이", income: 200000, expense: 170000, balance: 30000 }
-          ]
-        },
-        "예비비": {
-          totalIncome: 200000,
-          totalExpense: 0,
-          balance: 200000,
-          items: [
-            { name: "경조사비", income: 100000, expense: 0, balance: 100000 },
-            { name: "병원비", income: 100000, expense: 0, balance: 100000 }
-          ]
-        }
-      },
-      "2": {
-        "교통비": {
-          totalIncome: 120000,
-          totalExpense: 90000,
-          balance: 30000,
-          items: [
-            { name: "대중교통", income: 60000, expense: 40000, balance: 20000 },
-            { name: "유류비", income: 60000, expense: 50000, balance: 10000 }
-          ]
-        }
-      }
-    };
-    return mockDashboard;
+    // 기존 모크 리턴
+    return {}; 
   }
 
   try {
-    const response = await fetch(`${GAS_URL}?action=getDashboard`);
-    if (!response.ok) throw new Error('Network response was not ok');
-    const result = await response.json();
-    if (result.status === 'success') {
-      return result.data as DashboardData;
-    } else {
-      throw new Error(result.message || 'Failed to fetch dashboard data');
-    }
+    // We need month, so let's fetch raw tables directly or use getTransactions
+    const { data: expenses, error: expError } = await supabase.from('expenses').select('*');
+    if (expError) throw expError;
+
+    const { data: incomes, error: incError } = await supabase.from('incomes').select('*');
+    if (incError) throw incError;
+    
+    const all = [
+      ...(expenses || []).map(e => ({ ...e, type: '지출' })),
+      ...(incomes || []).map(i => ({ ...i, type: '수입' }))
+    ];
+
+    const dashboard: DashboardData = {};
+
+    all.forEach(t => {
+      // Use DB month or fallback to parsed date month
+      let month = t.month ? t.month.toString() : '';
+      if (!month && t.date) {
+        month = parseInt(t.date.split('-')[1]).toString();
+      }
+      if (!month) return; // skip if no month
+
+      if (!dashboard[month]) dashboard[month] = {};
+
+      if (!dashboard[month][t.category]) {
+        dashboard[month][t.category] = {
+          totalIncome: 0,
+          totalExpense: 0,
+          balance: 0,
+          items: []
+        };
+      }
+
+      const catData = dashboard[month][t.category];
+      const subCatName = t.subCategory || t.subCategory || '기타';
+      let subItem = catData.items.find(item => item.name === subCatName);
+      if (!subItem) {
+        subItem = { name: subCatName, income: 0, expense: 0, balance: 0 };
+        catData.items.push(subItem);
+      }
+
+      if (t.type === '수입') {
+        catData.totalIncome += t.amount;
+        subItem.income += t.amount;
+      } else {
+        catData.totalExpense += t.amount;
+        subItem.expense += t.amount;
+      }
+
+      catData.balance = catData.totalIncome - catData.totalExpense;
+      subItem.balance = subItem.income - subItem.expense;
+    });
+
+    return dashboard;
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('API Error (getDashboard):', error);
     throw error;
   }
 };
