@@ -1,5 +1,3 @@
-import { Loader2 } from 'lucide-react';
-
 interface LoadingSpinnerProps {
   text?: string;
   overlay?: boolean;
@@ -7,26 +5,40 @@ interface LoadingSpinnerProps {
 
 export default function LoadingSpinner({ text = '데이터를 불러오는 중...', overlay = false }: LoadingSpinnerProps) {
   const content = (
-    <div className="flex flex-col items-center justify-center p-6 bg-white/80 backdrop-blur-md rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/50">
-      <div className="relative flex items-center justify-center">
-        <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping scale-150"></div>
-        <Loader2 className="animate-spin text-primary relative z-10" size={40} strokeWidth={2.5} />
+    <div className="flex flex-col items-center justify-center p-8 bg-white/90 backdrop-blur-xl rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-gray-100/80">
+      <div className="relative flex flex-col items-center justify-center h-20 w-20 mb-2">
+        {/* Bouncing Coin */}
+        <div 
+          className="absolute z-10 text-[42px] leading-none drop-shadow-md"
+          style={{ animation: 'bounce 1.5s infinite cubic-bezier(0.28, 0.84, 0.42, 1)' }}
+        >
+          🪙
+        </div>
+        {/* Soft shadow that pulses opposite to the bounce */}
+        <div 
+          className="absolute bottom-1 w-10 h-2 bg-black/10 rounded-[50%] blur-[2px]"
+          style={{ animation: 'pulse 1.5s infinite cubic-bezier(0.28, 0.84, 0.42, 1)' }}
+        ></div>
       </div>
-      <p className="mt-5 text-[13px] font-bold text-gray-700 animate-pulse">{text}</p>
+      <p className="text-[14px] font-extrabold text-[#748E63]/90 tracking-wide animate-pulse">
+        {text}
+      </p>
     </div>
   );
 
   if (overlay) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-50/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-50/40 backdrop-blur-sm">
         {content}
       </div>
     );
   }
 
   return (
-    <div className="w-full h-[60vh] flex items-center justify-center">
-      {content}
+    <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+      <div className="pointer-events-auto">
+        {content}
+      </div>
     </div>
   );
 }
