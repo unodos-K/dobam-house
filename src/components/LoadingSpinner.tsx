@@ -9,15 +9,13 @@ export default function LoadingSpinner({ text = '데이터를 불러오는 중..
       <div className="relative flex flex-col items-center justify-center h-20 w-20 mb-2">
         {/* Bouncing Coin */}
         <div 
-          className="absolute z-10 text-[42px] leading-none drop-shadow-md"
-          style={{ animation: 'bounce 1.5s infinite cubic-bezier(0.28, 0.84, 0.42, 1)' }}
+          className="absolute z-10 text-[42px] leading-none drop-shadow-md animate-bounce"
         >
           🪙
         </div>
         {/* Soft shadow that pulses opposite to the bounce */}
         <div 
-          className="absolute bottom-1 w-10 h-2 bg-black/10 rounded-[50%] blur-[2px]"
-          style={{ animation: 'pulse 1.5s infinite cubic-bezier(0.28, 0.84, 0.42, 1)' }}
+          className="absolute bottom-1 w-10 h-2 bg-black/10 rounded-[50%] blur-[2px] animate-pulse"
         ></div>
       </div>
       <p className="text-[14px] font-extrabold text-[#748E63]/90 tracking-wide animate-pulse">

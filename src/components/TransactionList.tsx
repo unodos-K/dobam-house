@@ -128,6 +128,12 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
     }
   };
 
+  const formatDisplayDate = (dateString: string) => {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getDate()).padStart(2, '0')}.`;
+  };
+
   return (
     <div className="mt-12 space-y-4 relative">
       {loading && <LoadingSpinner text="처리 중..." overlay={true} />}
@@ -283,7 +289,7 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
                     <div>
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{t.category}</span>
-                        <span className="text-[11px] text-gray-400 font-medium">{t.date}</span>
+                        <span className="text-[11px] text-gray-400 font-medium">{formatDisplayDate(t.date)}</span>
                       </div>
                       <div className="text-[13px] font-bold text-gray-700">{t.content.replace(/☑/g, '').trim()}</div>
                     </div>
