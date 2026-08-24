@@ -3,6 +3,7 @@ import { getTransactions, deleteTransaction, updateTransaction } from '../servic
 import { Budget, Transaction } from '../types';
 import { Edit2, Save, Trash2, X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
+import ConfirmModal from './ConfirmModal';
 
 interface TransactionListProps {
   isIncome: boolean;
@@ -21,6 +22,20 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '삭제 확인',
+    message: '',
+    confirmText: '삭제',
+    onConfirm: () => {}
+  });
 
   useEffect(() => {
     getTransactions().then(setTransactions).catch(console.error);
@@ -66,18 +81,26 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
 
   const filteredTotal = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    setLoading(true);
-    try {
-      await deleteTransaction(id);
-      setTransactions(prev => prev.filter(t => t.id !== id));
-      onToast('삭제가 완료되었습니다.');
-    } catch (err) {
-      onToast('삭제 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
+  const handleDelete = (id: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: '내역 삭제',
+      message: '정말 해당 내역을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+      confirmText: '삭제하기',
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        setLoading(true);
+        try {
+          await deleteTransaction(id);
+          setTransactions(prev => prev.filter(t => t.id !== id));
+          onToast('삭제가 완료되었습니다.');
+        } catch (err) {
+          onToast('삭제 중 오류가 발생했습니다.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const startEdit = (t: Transaction) => {
@@ -282,6 +305,15 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
           ))
         )}
       </div>
+
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+      />
     </div>
   );
 }

@@ -1,14 +1,29 @@
 import { useState, useEffect } from 'react';
 import { getBudgets, getDashboard, appendIncome } from '../services/api';
 import { Budget, DashboardData } from '../types';
-import { Check } from 'lucide-react';
+import { Check, CheckCircle2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function IncomePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '확인',
+    message: '',
+    confirmText: '확인',
+    onConfirm: () => {}
+  });
 
   const [budgetMonth, setBudgetMonth] = useState((new Date().getMonth() + 1).toString());
 
@@ -56,51 +71,63 @@ export default function IncomePage() {
     }
 
     if (isRegistered) {
-      if (!window.confirm(`${budgetMonth}월 ${categoryName} 입금을 취소하시겠습니까?\n(마이너스 금액으로 장부에 상계 처리됩니다)`)) return;
-      
-      setLoading(true);
-      try {
-        const dataToSubmit = targetBudgets.map(b => ({
-          month: budgetMonth,
-          category: categoryName,
-          subCategory: b.subCategory,
-          amount: -b.amount,
-          memo: '정기 예산 원클릭 (취소)'
-        }));
-        await appendIncome(dataToSubmit);
-        
-        const newData = await getDashboard();
-        setDashboardData(newData);
-        showToast(`${budgetMonth}월 ${categoryName} 입금이 취소되었습니다.`);
-      } catch (err) {
-        showToast('취소 처리 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
+      setConfirmConfig({
+        isOpen: true,
+        title: '정기예산 입금 취소',
+        message: `${budgetMonth}월 ${categoryName} 입금을 취소하시겠습니까?\n(마이너스 금액으로 장부에 상계 처리됩니다)`,
+        confirmText: '입금 취소',
+        onConfirm: async () => {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+          setLoading(true);
+          try {
+            const dataToSubmit = targetBudgets.map(b => ({
+              month: budgetMonth,
+              category: categoryName,
+              subCategory: b.subCategory,
+              amount: -b.amount,
+              memo: '정기 예산 원클릭 (취소)'
+            }));
+            await appendIncome(dataToSubmit);
+            const newData = await getDashboard();
+            setDashboardData(newData);
+            showToast(`${budgetMonth}월 ${categoryName} 입금이 취소되었습니다.`);
+          } catch (err) {
+            showToast('취소 처리 중 오류가 발생했습니다.');
+          } finally {
+            setLoading(false);
+          }
+        }
+      });
       return;
     }
 
-    if (!window.confirm(`${budgetMonth}월 ${categoryName} 예산을 일괄 입금하시겠습니까?`)) return;
-    
-    setLoading(true);
-    try {
-      const dataToSubmit = targetBudgets.map(b => ({
-        month: budgetMonth,
-        category: categoryName,
-        subCategory: b.subCategory,
-        amount: b.amount,
-        memo: '정기 예산 원클릭'
-      }));
-      await appendIncome(dataToSubmit);
-      
-      const newData = await getDashboard();
-      setDashboardData(newData);
-      showToast(`${budgetMonth}월 ${categoryName} 예산 입금이 완료되었습니다.`);
-    } catch (err) {
-      showToast('등록 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: '정기예산 일괄 입금',
+      message: `${budgetMonth}월 ${categoryName} 예산을 일괄 입금하시겠습니까?`,
+      confirmText: '일괄 입금',
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        setLoading(true);
+        try {
+          const dataToSubmit = targetBudgets.map(b => ({
+            month: budgetMonth,
+            category: categoryName,
+            subCategory: b.subCategory,
+            amount: b.amount,
+            memo: '정기 예산 원클릭'
+          }));
+          await appendIncome(dataToSubmit);
+          const newData = await getDashboard();
+          setDashboardData(newData);
+          showToast(`${budgetMonth}월 ${categoryName} 예산 입금이 완료되었습니다.`);
+        } catch (err) {
+          showToast('등록 중 오류가 발생했습니다.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const [interestAmount, setInterestAmount] = useState<string>('');
@@ -210,13 +237,29 @@ export default function IncomePage() {
                   <button
                     key={cat}
                     onClick={() => handleOneClickBudget(cat)}
-                    className={`py-3 px-2 rounded-xl font-bold text-[13px] transition-colors border ${
+                    disabled={loading}
+                    className={`group relative flex flex-col items-center justify-center gap-1.5 p-4 rounded-[20px] transition-all overflow-hidden ${
                       registered 
-                        ? 'bg-gray-100 text-gray-500 border-gray-200' 
-                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100'
+                        ? 'bg-[#EAF1E4] border border-[#d3e2c6] shadow-inner' 
+                        : 'bg-white shadow-sm border border-gray-100 hover:-translate-y-1 hover:shadow-md'
                     }`}
                   >
-                    {registered ? '입금 완료 (취소)' : cat}
+                    {registered ? (
+                      <>
+                        <div className="flex flex-col items-center justify-center transition-opacity duration-300 group-hover:opacity-0 group-active:opacity-0">
+                          <CheckCircle2 size={24} className="text-[#748E63] mb-1" />
+                          <span className="font-extrabold text-[13px] text-[#748E63]">{cat} 입금 완료!</span>
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-active:opacity-100 bg-red-50/90 backdrop-blur-sm">
+                          <span className="font-extrabold text-[13px] text-red-500">입금 취소하기</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[11px] font-bold text-text-light">{cat}</span>
+                        <span className="font-extrabold text-[15px] text-text">입금하기</span>
+                      </>
+                    )}
                   </button>
                 );
               })}
@@ -315,11 +358,20 @@ export default function IncomePage() {
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-800/90 backdrop-blur-sm text-white px-5 py-3 rounded-full text-[13px] font-medium shadow-xl z-50 flex items-center gap-2 transition-opacity duration-300 whitespace-nowrap">
+        <div className="fixed bottom-36 left-1/2 -translate-x-1/2 bg-gray-800/90 backdrop-blur-sm text-white px-5 py-3 rounded-full text-[13px] font-medium shadow-xl z-50 flex items-center gap-2 transition-opacity duration-300 whitespace-nowrap">
           <Check size={16} className="text-green-400" />
           {toastMessage}
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+      />
     </div>
   );
 }
