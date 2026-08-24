@@ -19,6 +19,7 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
   const [filterMonth, setFilterMonth] = useState<string>(currentM);
   const [filterCat, setFilterCat] = useState<string>('전체');
   const [filterSubCat, setFilterSubCat] = useState<string>('전체');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Transaction | null>(null);
@@ -82,6 +83,14 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
     
     if (filterCat !== '전체' && t.category !== filterCat) return false;
     if (filterSubCat !== '전체' && t.subCategory !== filterSubCat) return false;
+    
+    if (searchTerm.trim() !== '') {
+      const searchLower = searchTerm.toLowerCase();
+      const contentMatch = t.content?.toLowerCase().includes(searchLower) || false;
+      const memoMatch = t.memo?.toLowerCase().includes(searchLower) || false;
+      if (!contentMatch && !memoMatch) return false;
+    }
+    
     return true;
   });
 
@@ -183,6 +192,16 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
               <option key={sub} value={sub}>{sub}</option>
             ))}
           </select>
+        </div>
+        
+        <div className="relative">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="🔍 메모 또는 세부내역 검색..."
+            className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-[12px] font-medium rounded-xl pl-3 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
         </div>
         
         <div className={`p-3 rounded-xl border flex items-center justify-between shadow-sm ${

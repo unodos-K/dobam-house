@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getBudgets, getDashboard, appendIncome } from '../services/api';
 import { Budget, DashboardData } from '../types';
 import { Check, CheckCircle2 } from 'lucide-react';
@@ -212,6 +212,19 @@ export default function IncomePage() {
     }
   };
 
+  const manualAmountRef = useRef<HTMLInputElement>(null);
+
+  const handleManualMemoKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleManualSubmit().then(() => {
+        setTimeout(() => {
+          manualAmountRef.current?.focus();
+        }, 50);
+      });
+    }
+  };
+
   return (
     <div className="pb-24 bg-gray-50/30">
       <header className="sticky top-0 z-40 bg-[#f8f9fa]/90 backdrop-blur-md px-4 pt-8 pb-4 mb-4 border-b border-gray-100/80 shadow-sm flex flex-col gap-1 max-w-[480px] mx-auto w-full">
@@ -344,6 +357,7 @@ export default function IncomePage() {
               <div className="relative">
                 <input
                   type="text"
+                  ref={manualAmountRef}
                   value={manualAmount}
                   onChange={(e) => setManualAmount(formatAmount(e.target.value))}
                   placeholder="수입 금액"
@@ -355,6 +369,7 @@ export default function IncomePage() {
                 type="text"
                 value={manualMemo}
                 onChange={(e) => setManualMemo(e.target.value)}
+                onKeyDown={handleManualMemoKeyDown}
                 placeholder="메모를 입력하세요 (선택)"
                 className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />

@@ -78,7 +78,11 @@ export const getTransactions = async (): Promise<Transaction[]> => {
     }));
 
     const allTransactions = [...formattedExpenses, ...formattedIncomes];
-    allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    allTransactions.sort((a, b) => {
+      const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
 
     return allTransactions as unknown as Transaction[];
   } catch (error) {

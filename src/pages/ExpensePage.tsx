@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getBudgets, appendExpense, getDashboard } from '../services/api';
 import { Budget, DashboardData } from '../types';
 import { Check, Plus, Trash2 } from 'lucide-react';
@@ -58,19 +58,35 @@ export default function ExpensePage() {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
+  const amountInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   const addExpenseRow = () => {
     if (expenseRows.length >= 20) {
       showToast('최대 20개까지만 추가할 수 있습니다.');
       return;
     }
+    const lastRow = expenseRows[expenseRows.length - 1];
     setExpenseRows([...expenseRows, {
       id: Date.now().toString(),
-      date: today,
-      category: '생활비',
-      subCategory: '',
+      date: lastRow.date,
+      category: lastRow.category,
+      subCategory: lastRow.subCategory,
       amount: '',
       memo: ''
     }]);
+    
+    // Auto focus new row's amount input
+    setTimeout(() => {
+      const el = amountInputRefs.current[expenseRows.length];
+      if (el) el.focus();
+    }, 50);
+  };
+
+  const handleMemoKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addExpenseRow();
+    }
   };
 
   const removeExpenseRow = (id: string) => {
@@ -204,6 +220,7 @@ export default function ExpensePage() {
                     <div className="relative flex-[1.5]">
                       <input
                         type="text"
+                        ref={el => amountInputRefs.current[index] = el}
                         value={row.amount}
                         onChange={(e) => updateExpenseRow(row.id, 'amount', formatAmount(e.target.value))}
                         placeholder="지출 금액"
@@ -215,6 +232,7 @@ export default function ExpensePage() {
                       type="text"
                       value={row.memo}
                       onChange={(e) => updateExpenseRow(row.id, 'memo', e.target.value)}
+                      onKeyDown={handleMemoKeyDown}
                       placeholder="메모 (선택)"
                       className="flex-[2] bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
