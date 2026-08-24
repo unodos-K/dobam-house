@@ -10,9 +10,10 @@ interface TransactionListProps {
   budgets: Budget[];
   refreshTrigger: number;
   onToast: (msg: string) => void;
+  filterDate?: string;
 }
 
-export default function TransactionList({ isIncome, budgets, refreshTrigger, onToast }: TransactionListProps) {
+export default function TransactionList({ isIncome, budgets, refreshTrigger, onToast, filterDate }: TransactionListProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const currentM = (new Date().getMonth() + 1).toString();
   const [filterMonth, setFilterMonth] = useState<string>(currentM);
@@ -69,6 +70,9 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
     if (isIncome && t.type !== '수입') return false;
     if (!isIncome && t.type !== '지출') return false;
     
+    // filterDate props가 있을 때 선택된 날짜 이후 데이터 제외
+    if (filterDate && t.date > filterDate) return false;
+
     if (filterMonth !== '전체') {
       const dateObj = new Date(t.date);
       if (!isNaN(dateObj.getTime())) {

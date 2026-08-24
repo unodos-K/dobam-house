@@ -3,9 +3,10 @@ import { DashboardData } from '../types';
 interface BalanceWidgetProps {
   dashboardData: DashboardData | null;
   month: string;
+  hideMonth?: boolean;
 }
 
-export default function BalanceWidget({ dashboardData, month }: BalanceWidgetProps) {
+export default function BalanceWidget({ dashboardData, month, hideMonth }: BalanceWidgetProps) {
   if (!dashboardData) return null;
   
   const allData = dashboardData['all'] || {};
@@ -34,12 +35,14 @@ export default function BalanceWidget({ dashboardData, month }: BalanceWidgetPro
               </span>
             </div>
             
-            <div className="w-full bg-gray-50 rounded-lg p-1.5 flex flex-col items-center justify-center mt-0.5">
-              <span className="text-[9px] font-bold text-gray-400 mb-0.5">이번 달 ({month}월) 잔액</span>
-              <span className={`text-[11px] font-bold ${mBal < 0 ? 'text-red-400' : mBal > 0 ? 'text-blue-500' : 'text-gray-500'}`}>
-                {mBal > 0 ? '+' : ''}{mBal.toLocaleString()}원
-              </span>
-            </div>
+            {!hideMonth && (
+              <div className="w-full bg-gray-50 rounded-lg p-1.5 flex flex-col items-center justify-center mt-0.5">
+                <span className="text-[9px] font-bold text-gray-400 mb-0.5">이번 달 ({month}월) 잔액</span>
+                <span className={`text-[11px] font-bold ${mBal < 0 ? 'text-red-400' : mBal > 0 ? 'text-blue-500' : 'text-gray-500'}`}>
+                  {mBal > 0 ? '+' : ''}{mBal.toLocaleString()}원
+                </span>
+              </div>
+            )}
           </div>
         );
       })}
