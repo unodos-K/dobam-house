@@ -4,6 +4,7 @@ import { Budget, DashboardData } from '../types';
 import { Check, CheckCircle2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ConfirmModal from '../components/ConfirmModal';
+import BalanceWidget from '../components/BalanceWidget';
 
 export default function IncomePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -152,6 +153,8 @@ export default function IncomePage() {
         amount: Number(rawAmount),
         memo: ''
       }]);
+      const newData = await getDashboard();
+      setDashboardData(newData);
       showToast(`${interestCategory} 수입이 등록되었습니다.`);
       setInterestAmount('');
     } catch (err) {
@@ -191,6 +194,8 @@ export default function IncomePage() {
         amount: Number(rawAmount),
         memo: manualMemo
       }]);
+      const newData = await getDashboard();
+      setDashboardData(newData);
       showToast('기타 수입이 성공적으로 등록되었습니다.');
       setManualAmount('');
       setManualMemo('');
@@ -209,6 +214,7 @@ export default function IncomePage() {
       </header>
 
       <div className="px-4 max-w-[480px] mx-auto w-full">
+        <BalanceWidget dashboardData={dashboardData} month={budgetMonth} />
         <div className="space-y-6 relative">
           {loading && <LoadingSpinner text="데이터 전송 중..." overlay={true} />}
 

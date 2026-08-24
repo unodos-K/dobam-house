@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { getBudgets, appendExpense } from '../services/api';
-import { Budget } from '../types';
+import { getBudgets, appendExpense, getDashboard } from '../services/api';
+import { Budget, DashboardData } from '../types';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import BalanceWidget from '../components/BalanceWidget';
 
 export default function ExpensePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -33,6 +35,7 @@ export default function ExpensePage() {
 
   useEffect(() => {
     getBudgets().then(setBudgets).catch(console.error);
+    getDashboard().then(setDashboardData).catch(console.error);
   }, []);
 
   const formatAmount = (val: string) => {
@@ -104,6 +107,8 @@ export default function ExpensePage() {
         memo: r.memo
       }));
       await appendExpense(dataToSubmit);
+      const newData = await getDashboard();
+      setDashboardData(newData);
       
       showToast('지출 내역 전송 성공!');
       setExpenseRows([{
@@ -144,9 +149,10 @@ export default function ExpensePage() {
       </header>
 
       <div className="px-4 max-w-[480px] mx-auto w-full">
+        <BalanceWidget dashboardData={dashboardData} month={expenseMonth} />
         {loading && <LoadingSpinner text="데이터 전송 중..." overlay={true} />}
 
-        <div className="space-y-4">
+        <div className="space-y-4 relative">
           {expenseRows.map((row, index) => {
             const subOptions = getSubOptionsByCategory(row.category);
             if (!row.subCategory && subOptions.length > 0) {
