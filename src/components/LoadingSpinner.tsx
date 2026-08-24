@@ -6,7 +6,8 @@ interface LoadingSpinnerProps {
 export default function LoadingSpinner({ text = '로딩 중...', overlay = false }: LoadingSpinnerProps) {
   const content = (
     <div className="flex flex-col items-center justify-center bg-white/90 backdrop-blur-md rounded-[28px] shadow-xl border border-white/50 w-48 h-48 mx-auto">
-      <div className="relative flex flex-col items-center justify-center h-24 w-24 mb-3">
+      {/* SVG Container with subtle left shift to balance optical weight of the pencil */}
+      <div className="relative flex flex-col items-center justify-center h-24 w-24 mb-3 -ml-2">
         <svg width="100%" height="100%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
           <style>
             {`
@@ -21,7 +22,7 @@ export default function LoadingSpinner({ text = '로딩 중...', overlay = false
               }
               .pencil-anim {
                 animation: scribble 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
-                transform-origin: 50px 70px; /* Origin near the pencil tip */
+                transform-origin: 50px 70px;
               }
             `}
           </style>
@@ -65,19 +66,20 @@ export default function LoadingSpinner({ text = '로딩 중...', overlay = false
           </g>
         </svg>
       </div>
-      <p className="text-[14px] font-bold text-[#748E63]/90 tracking-wide animate-pulse mt-2">
+      <p className="text-[14px] font-bold text-[#748E63]/90 tracking-wide animate-pulse mt-2 ml-1">
         {text}
       </p>
     </div>
   );
 
-  if (overlay) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/10 backdrop-blur-sm">
-        {content}
-      </div>
-    );
-  }
-
-  return <div className="flex justify-center my-10">{content}</div>;
+  // Always use fixed inset-0 to guarantee absolute vertical/horizontal centering on the screen
+  return (
+    <div 
+      className={`fixed top-0 left-0 w-[100vw] h-[100dvh] z-[9999] flex items-center justify-center ${
+        overlay ? 'bg-gray-900/10 backdrop-blur-sm' : 'bg-gray-50/30'
+      }`}
+    >
+      {content}
+    </div>
+  );
 }
