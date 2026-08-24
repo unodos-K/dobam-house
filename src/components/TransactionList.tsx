@@ -198,7 +198,7 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
           </div>
         ) : (
           filteredTransactions.map(t => (
-            <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 transition-colors">
+            <div key={t.id} className="bg-white p-3 px-3.5 rounded-[14px] shadow-sm border border-gray-100 transition-colors">
               {editingId === t.id && editForm ? (
                 <div className="space-y-3">
                   <div className="flex gap-2">
@@ -284,28 +284,45 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
                   </div>
                 </div>
               ) : (
-                <>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{t.category}</span>
-                        <span className="text-[11px] text-gray-400 font-medium">{formatDisplayDate(t.date)}</span>
-                      </div>
-                      <div className="text-[13px] font-bold text-gray-700">{t.content.replace(/☑/g, '').trim()}</div>
+                <div className="flex flex-col gap-1.5">
+                  {/* Row 1 */}
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{t.category}</span>
+                      <span className="text-[11px] text-gray-400 font-medium">{formatDisplayDate(t.date)}</span>
                     </div>
-                    <div className={`font-bold text-[14px] ${isIncome ? 'text-blue-500' : 'text-red-500'}`}>
+                    <div className={`font-extrabold text-[13px] tracking-tight ${isIncome ? 'text-blue-500' : 'text-red-500'}`}>
                       {isIncome ? '+' : '-'}{t.amount.toLocaleString()}원
                     </div>
                   </div>
-                  <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-gray-50">
-                    <button onClick={() => startEdit(t)} className="text-gray-400 hover:text-blue-500 transition-colors">
-                      <Edit2 size={14} />
-                    </button>
-                    <button onClick={() => handleDelete(t.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                      <Trash2 size={14} />
-                    </button>
+                  
+                  {/* Row 2 */}
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1.5 overflow-hidden pr-2">
+                      {t.subCategory ? (
+                        <>
+                          <span className="text-[13px] font-bold text-gray-800 truncate max-w-[90px]">{t.subCategory.replace(/☑/g, '').trim()}</span>
+                          {t.memo && (
+                            <>
+                              <span className="text-gray-300 text-[10px]">|</span>
+                              <span className="text-[11px] text-gray-500 truncate max-w-[120px]">{t.memo}</span>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[13px] font-bold text-gray-800 truncate max-w-[200px]">{t.content.replace(/☑/g, '').trim()}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <button onClick={() => startEdit(t)} className="text-gray-400 hover:text-blue-500 transition-colors">
+                        <Edit2 size={13} />
+                      </button>
+                      <button onClick={() => handleDelete(t.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
           ))
