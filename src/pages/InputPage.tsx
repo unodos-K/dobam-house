@@ -631,9 +631,9 @@ export default function InputPage({ type }: InputPageProps) {
             <Plus size={18} />
             지출 항목 추가
           </button>
+          
+          {renderTransactionList()}
         </div>
-
-        {renderTransactionList()}
 
         {/* 하단 고정 전송 버튼 영역 */}
         <div className="fixed bottom-16 left-0 w-full max-w-[480px] left-1/2 -translate-x-1/2 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-40 pb-safe">
