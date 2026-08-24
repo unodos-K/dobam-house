@@ -5,6 +5,7 @@ import BudgetPage from './pages/BudgetPage';
 import HistoryPage from './pages/HistoryPage';
 import IncomePage from './pages/IncomePage';
 import ExpensePage from './pages/ExpensePage';
+import TransactionsPage from './pages/TransactionsPage';
 import AuthPage from './pages/AuthPage';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
           <Route path="/" element={<Navigate to="/history" replace />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/input-income" element={<IncomePage />} />
           <Route path="/input-expense" element={<ExpensePage />} />
           {/* 알 수 없는 경로는 기본 화면으로 리다이렉트 */}

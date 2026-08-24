@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { PieChart, List, PlusCircle, MinusCircle } from 'lucide-react';
+import { PieChart, List, PlusCircle, MinusCircle, Wallet } from 'lucide-react';
 
 const BottomNav = () => {
   const location = useLocation();
@@ -7,6 +7,7 @@ const BottomNav = () => {
   const navItems = [
     { name: '내역', path: '/history', icon: List },
     { name: '예산', path: '/budget', icon: PieChart },
+    { name: '수입/지출', path: '/transactions', icon: Wallet },
     { name: '수입입력', path: '/input-income', icon: PlusCircle },
     { name: '지출입력', path: '/input-expense', icon: MinusCircle },
   ];

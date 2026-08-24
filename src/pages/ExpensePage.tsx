@@ -3,13 +3,11 @@ import { getBudgets, appendExpense } from '../services/api';
 import { Budget } from '../types';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
-import TransactionList from '../components/TransactionList';
 
 export default function ExpensePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [expenseMonth, setExpenseMonth] = useState((new Date().getMonth() + 1).toString());
   
@@ -56,8 +54,6 @@ export default function ExpensePage() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
-
-  const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
 
   const addExpenseRow = () => {
     if (expenseRows.length >= 20) {
@@ -118,7 +114,6 @@ export default function ExpensePage() {
         amount: '',
         memo: ''
       }]);
-      triggerRefresh();
     } catch (err) {
       showToast('전송 중 오류가 발생했습니다.');
     } finally {
@@ -230,13 +225,6 @@ export default function ExpensePage() {
             <Plus size={18} />
             지출 항목 추가
           </button>
-
-          <TransactionList 
-            isIncome={false} 
-            budgets={budgets} 
-            refreshTrigger={refreshTrigger} 
-            onToast={showToast} 
-          />
         </div>
       </div>
 

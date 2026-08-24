@@ -3,14 +3,12 @@ import { getBudgets, getDashboard, appendIncome } from '../services/api';
 import { Budget, DashboardData } from '../types';
 import { Check } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
-import TransactionList from '../components/TransactionList';
 
 export default function IncomePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [budgetMonth, setBudgetMonth] = useState((new Date().getMonth() + 1).toString());
 
@@ -48,8 +46,6 @@ export default function IncomePage() {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
-
   const handleOneClickBudget = async (categoryName: string) => {
     const isRegistered = isBudgetRegistered(categoryName);
     const targetBudgets = budgets.filter(b => b.category === categoryName);
@@ -75,7 +71,6 @@ export default function IncomePage() {
         
         const newData = await getDashboard();
         setDashboardData(newData);
-        triggerRefresh();
         showToast(`${budgetMonth}월 ${categoryName} 입금이 취소되었습니다.`);
       } catch (err) {
         showToast('취소 처리 중 오류가 발생했습니다.');
@@ -100,7 +95,6 @@ export default function IncomePage() {
       
       const newData = await getDashboard();
       setDashboardData(newData);
-      triggerRefresh();
       showToast(`${budgetMonth}월 ${categoryName} 예산 입금이 완료되었습니다.`);
     } catch (err) {
       showToast('등록 중 오류가 발생했습니다.');
@@ -133,7 +127,6 @@ export default function IncomePage() {
       }]);
       showToast(`${interestCategory} 수입이 등록되었습니다.`);
       setInterestAmount('');
-      triggerRefresh();
     } catch (err) {
       showToast('등록 중 오류가 발생했습니다.');
     } finally {
@@ -174,7 +167,6 @@ export default function IncomePage() {
       showToast('기타 수입이 성공적으로 등록되었습니다.');
       setManualAmount('');
       setManualMemo('');
-      triggerRefresh();
     } catch (err) {
       showToast('등록 중 오류가 발생했습니다.');
     } finally {
@@ -320,13 +312,6 @@ export default function IncomePage() {
             </div>
           </section>
         </div>
-        
-        <TransactionList 
-          isIncome={true} 
-          budgets={budgets} 
-          refreshTrigger={refreshTrigger} 
-          onToast={showToast} 
-        />
       </div>
 
       {toastMessage && (
