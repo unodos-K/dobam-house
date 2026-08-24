@@ -5,7 +5,9 @@ export interface Transaction {
   date: string; // YYYY-MM-DD
   type: TransactionType; // 지출 or 수입
   category: string; // 식비, 교통비, 월급 등
-  content: string; // 상세 내용
+  subCategory?: string; // 세부항목
+  memo?: string; // 메모
+  content: string; // 상세 내용 (호환성 유지)
   amount: number; // 금액
 }
 

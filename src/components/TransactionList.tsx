@@ -60,7 +60,7 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
     }
     
     if (filterCat !== '전체' && t.category !== filterCat) return false;
-    if (filterSubCat !== '전체' && t.content !== filterSubCat) return false;
+    if (filterSubCat !== '전체' && t.subCategory !== filterSubCat) return false;
     return true;
   });
 
@@ -177,21 +177,56 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
                     />
                     <select
                       value={editForm.category}
-                      onChange={e => setEditForm({ ...editForm, category: e.target.value })}
+                      onChange={e => setEditForm({ ...editForm, category: e.target.value, subCategory: '' })}
                       className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none"
                     >
-                      <option value="교통비">교통비</option>
-                      <option value="생활비">생활비</option>
-                      <option value="예비비">예비비</option>
+                      {isIncome ? (
+                        <>
+                          <option value="월급">월급</option>
+                          <option value="부수입">부수입</option>
+                          <option value="이자">이자</option>
+                          <option value="캐시백">캐시백</option>
+                          <option value="기타">기타</option>
+                          <option value="교통비">교통비 (예산입금)</option>
+                          <option value="생활비">생활비 (예산입금)</option>
+                          <option value="예비비">예비비 (예산입금)</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="교통비">교통비</option>
+                          <option value="생활비">생활비</option>
+                          <option value="예비비">예비비</option>
+                        </>
+                      )}
                     </select>
+                    {isIncome ? (
+                      <input
+                        type="text"
+                        value={editForm.subCategory || ''}
+                        onChange={e => setEditForm({ ...editForm, subCategory: e.target.value })}
+                        className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none"
+                        placeholder="세부항목"
+                      />
+                    ) : (
+                      <select
+                        value={editForm.subCategory || ''}
+                        onChange={e => setEditForm({ ...editForm, subCategory: e.target.value })}
+                        className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none"
+                      >
+                        <option value="" disabled>세부 선택</option>
+                        {getSubOptionsByCategory(editForm.category).map(sub => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={editForm.content}
-                      onChange={e => setEditForm({ ...editForm, content: e.target.value })}
+                      value={editForm.memo || ''}
+                      onChange={e => setEditForm({ ...editForm, memo: e.target.value })}
                       className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none"
-                      placeholder="세부항목 / 메모"
+                      placeholder="메모 (선택)"
                     />
                     <div className="relative flex-1">
                       <input
