@@ -51,11 +51,25 @@ export default function TransactionsPage() {
       if (tJson.status === 'success' && tJson.data && tJson.data.length > 0) {
         const transactions = tJson.data;
         
+        const parseDate = (dateStr: string) => {
+          if (!dateStr) return new Date().toISOString().split('T')[0];
+          // 이미 YYYY-MM-DD 형식인 경우 그대로 반환
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+          
+          try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          } catch (e) {
+            return new Date().toISOString().split('T')[0];
+          }
+        };
+
         const expenses = transactions
           .filter((t: any) => t.type === '지출' || t.type === 'expense')
           .map((t: any) => ({
-            month: t.month ? t.month.toString() : parseInt(t.date.split('-')[1]).toString(),
-            date: t.date,
+            month: t.month ? t.month.toString() : parseInt(parseDate(t.date).split('-')[1]).toString(),
+            date: parseDate(t.date),
             category: t.category,
             "subCategory": t.subCategory,
             amount: t.amount,
@@ -65,8 +79,8 @@ export default function TransactionsPage() {
         const incomes = transactions
           .filter((t: any) => t.type === '수입' || t.type === 'income')
           .map((t: any) => ({
-            month: t.month ? t.month.toString() : parseInt(t.date.split('-')[1]).toString(),
-            date: t.date,
+            month: t.month ? t.month.toString() : parseInt(parseDate(t.date).split('-')[1]).toString(),
+            date: parseDate(t.date),
             category: t.category,
             "subCategory": t.subCategory,
             amount: t.amount,
