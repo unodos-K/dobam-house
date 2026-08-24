@@ -3,7 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import BottomNav from './components/BottomNav';
 import BudgetPage from './pages/BudgetPage';
 import HistoryPage from './pages/HistoryPage';
-import InputPage from './pages/InputPage';
+import IncomePage from './pages/IncomePage';
+import ExpensePage from './pages/ExpensePage';
 import AuthPage from './pages/AuthPage';
 
 function App() {
@@ -33,8 +34,8 @@ function App() {
           <Route path="/" element={<Navigate to="/history" replace />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/budget" element={<BudgetPage />} />
-          <Route path="/input-income" element={<InputPage type="income" />} />
-          <Route path="/input-expense" element={<InputPage type="expense" />} />
+          <Route path="/input-income" element={<IncomePage />} />
+          <Route path="/input-expense" element={<ExpensePage />} />
           {/* 알 수 없는 경로는 기본 화면으로 리다이렉트 */}
           <Route path="*" element={<Navigate to="/history" replace />} />
         </Routes>
