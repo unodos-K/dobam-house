@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getBudgets, appendIncome, appendExpense } from '../services/api';
-import { Budget } from '../types';
+import { getBudgets, getDashboard, appendIncome, appendExpense } from '../services/api';
+import { Budget, DashboardData } from '../types';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -12,9 +12,12 @@ export default function InputPage({ type }: InputPageProps) {
   const isIncome = type === 'income';
   
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [registeredBudgets, setRegisteredBudgets] = useState<string[]>([]);
+  
+  // 정기예산 월 선택
+  const [budgetMonth, setBudgetMonth] = useState((new Date().getMonth() + 1).toString());
 
   // 금액 포맷팅 유틸리티
   const formatAmount = (val: string) => {
@@ -35,7 +38,22 @@ export default function InputPage({ type }: InputPageProps) {
 
   useEffect(() => {
     getBudgets().then(setBudgets).catch(console.error);
-  }, []);
+    if (isIncome) {
+      getDashboard().then(setDashboardData).catch(console.error);
+    }
+  }, [isIncome]);
+
+  // 입금 완료 상태 판별 (API 데이터 기반)
+  const isBudgetRegistered = (cat: string) => {
+    if (!dashboardData) return false;
+    const monthData = dashboardData[budgetMonth];
+    if (!monthData || !monthData[cat]) return false;
+    
+    // 해당 카테고리의 예산 합계 계산
+    const budgetSum = budgets.filter(b => b.category === cat).reduce((sum, b) => sum + b.amount, 0);
+    // 현재 수입 합계가 예산 합계 이상이면 입금 완료로 간주
+    return budgetSum > 0 && monthData[cat].totalIncome >= budgetSum;
+  };
 
   // Toast
   const showToast = (msg: string) => {
@@ -50,25 +68,46 @@ export default function InputPage({ type }: InputPageProps) {
   // [유형 1] 정기 예산 원클릭 입금
   // ============================
   const handleOneClickBudget = async (categoryName: string) => {
-    if (registeredBudgets.includes(categoryName)) {
-      if (!window.confirm(`${categoryName} 등록을 취소하시겠습니까?\n(현재는 UI 상태만 원복됩니다)`)) return;
-      setRegisteredBudgets(prev => prev.filter(c => c !== categoryName));
-      showToast(`${categoryName} 등록이 취소되었습니다.`);
-      return;
-    }
-
-    if (!window.confirm(`${categoryName} 예산을 이번 달 수입으로 일괄 등록하시겠습니까?`)) return;
-    
+    const isRegistered = isBudgetRegistered(categoryName);
     const targetBudgets = budgets.filter(b => b.category === categoryName);
+    
     if (targetBudgets.length === 0) {
       showToast(`${categoryName}에 해당하는 예산 항목이 없습니다.`);
       return;
     }
 
+    if (isRegistered) {
+      if (!window.confirm(`${budgetMonth}월 ${categoryName} 입금을 취소하시겠습니까?\n(마이너스 금액으로 장부에 상계 처리됩니다)`)) return;
+      
+      setLoading(true);
+      try {
+        const dataToSubmit = targetBudgets.map(b => ({
+          month: budgetMonth,
+          category: categoryName,
+          subCategory: b.subCategory,
+          amount: -b.amount, // 음수로 전송하여 취소 처리
+          memo: '정기 예산 원클릭 (취소)'
+        }));
+        await appendIncome(dataToSubmit);
+        
+        // 대시보드 데이터 새로고침
+        const newData = await getDashboard();
+        setDashboardData(newData);
+        showToast(`${budgetMonth}월 ${categoryName} 입금이 취소되었습니다.`);
+      } catch (err) {
+        showToast('취소 처리 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (!window.confirm(`${budgetMonth}월 ${categoryName} 예산을 일괄 입금하시겠습니까?`)) return;
+    
     setLoading(true);
     try {
       const dataToSubmit = targetBudgets.map(b => ({
-        month: (new Date().getMonth() + 1).toString(),
+        month: budgetMonth,
         category: categoryName,
         subCategory: b.subCategory,
         amount: b.amount,
@@ -76,8 +115,9 @@ export default function InputPage({ type }: InputPageProps) {
       }));
       await appendIncome(dataToSubmit);
       
-      setRegisteredBudgets(prev => [...prev, categoryName]);
-      showToast(`${categoryName} 예산 일괄 등록이 완료되었습니다.`);
+      const newData = await getDashboard();
+      setDashboardData(newData);
+      showToast(`${budgetMonth}월 ${categoryName} 예산 입금이 완료되었습니다.`);
     } catch (err) {
       console.error(err);
       showToast('등록 중 오류가 발생했습니다.');
@@ -400,26 +440,37 @@ export default function InputPage({ type }: InputPageProps) {
 
         {/* 유형 1: 정기 예산 원클릭 */}
         <section className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h2 className="text-[15px] font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <span>🎯</span> 정기 예산 원클릭 입금
-          </h2>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-[15px] font-bold text-gray-800 flex items-center gap-2">
+              <span>🎯</span> 정기 예산 원클릭 입금
+            </h2>
+            <select
+              value={budgetMonth}
+              onChange={(e) => setBudgetMonth(e.target.value)}
+              className="bg-gray-100 border-none text-gray-700 font-bold text-xs rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              {Array.from({length: 12}, (_, i) => (i + 1).toString()).map(m => (
+                <option key={m} value={m}>{m}월</option>
+              ))}
+            </select>
+          </div>
           <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
-            이번 달 정기 예산 항목들을 수입으로 일괄 자동 등록합니다.
+            선택한 월의 정기 예산 항목들을 수입으로 일괄 자동 등록합니다.
           </p>
           <div className="grid grid-cols-3 gap-2">
             {['교통비', '생활비', '예비비'].map(cat => {
-              const isRegistered = registeredBudgets.includes(cat);
+              const registered = isBudgetRegistered(cat);
               return (
                 <button
                   key={cat}
                   onClick={() => handleOneClickBudget(cat)}
                   className={`py-3 px-2 rounded-xl font-bold text-[13px] transition-colors border ${
-                    isRegistered 
+                    registered 
                       ? 'bg-gray-100 text-gray-500 border-gray-200' 
                       : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100'
                   }`}
                 >
-                  {isRegistered ? '취소' : cat}
+                  {registered ? '입금 완료 (취소)' : cat}
                 </button>
               );
             })}
