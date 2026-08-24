@@ -22,6 +22,7 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -38,7 +39,8 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
   });
 
   useEffect(() => {
-    getTransactions().then(setTransactions).catch(console.error);
+    setInitialLoading(true);
+    getTransactions().then(setTransactions).catch(console.error).finally(() => setInitialLoading(false));
   }, [isIncome, refreshTrigger]);
 
   const formatAmount = (val: string) => {
@@ -192,7 +194,28 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
       </div>
 
       <div className="space-y-2 pb-10">
-        {filteredTransactions.length === 0 ? (
+        {initialLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white p-3 px-3.5 rounded-[14px] shadow-sm border border-gray-100 flex flex-col gap-2.5 animate-pulse">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-4 w-12 bg-gray-200 rounded"></div>
+                    <div className="h-3 w-16 bg-gray-100 rounded"></div>
+                  </div>
+                  <div className="h-4 w-20 bg-gray-200 rounded"></div>
+                </div>
+                <div className="flex justify-between items-center mt-1">
+                  <div className="h-3.5 w-32 bg-gray-200 rounded"></div>
+                  <div className="flex gap-2.5">
+                    <div className="h-3 w-3 bg-gray-200 rounded"></div>
+                    <div className="h-3 w-3 bg-gray-200 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredTransactions.length === 0 ? (
           <div className="text-center py-8 text-gray-400 text-sm bg-white rounded-2xl border border-gray-100 border-dashed">
             해당하는 내역이 없습니다.
           </div>
