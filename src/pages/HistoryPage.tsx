@@ -132,7 +132,7 @@ export default function HistoryPage() {
               
               {catData.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-center text-xs py-1.5 px-1 rounded hover:bg-gray-50 transition-colors">
-                  <span className="font-medium text-gray-700 w-20 truncate">{item.name.trim()}</span>
+                  <span className="font-medium text-gray-700 w-20 truncate">{item.name.replace(/☑/g, '').trim()}</span>
                   <div className="flex gap-4 flex-1 justify-end text-right font-medium">
                     <span className="text-blue-500 w-14 truncate">{item.income === 0 ? '-' : item.income.toLocaleString()}</span>
                     <span className="text-red-500 w-14 truncate">{item.expense === 0 ? '-' : item.expense.toLocaleString()}</span>
@@ -258,7 +258,7 @@ export default function HistoryPage() {
                                 <div key={idx} className="flex justify-between items-center text-[11px] py-1 px-1 rounded hover:bg-gray-50 transition-colors">
                                   <span className="font-medium text-gray-600 w-20 truncate">
                                     <span className="text-gray-300 mr-1">└</span>
-                                    {item.name.trim()}
+                                    {item.name.replace(/☑/g, '').trim()}
                                   </span>
                                   <div className="flex gap-4 flex-1 justify-end text-right">
                                     <span className="text-blue-500/80 w-14 truncate">{item.income === 0 ? '-' : item.income.toLocaleString()}</span>
