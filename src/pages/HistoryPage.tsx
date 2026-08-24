@@ -121,22 +121,22 @@ export default function HistoryPage() {
 
             {/* 세부 내역 표 */}
             <div className="p-4 space-y-0.5">
-              <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold mb-2 px-1">
-                <span className="w-20">항목</span>
-                <div className="flex gap-4 flex-1 justify-end text-right">
-                  <span className="w-14">수입</span>
-                  <span className="w-14">지출</span>
-                  <span className="w-14">잔액</span>
+              <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold mb-2 px-1 text-center">
+                <span className="w-[70px]">항목</span>
+                <div className="flex gap-1 flex-1 justify-center">
+                  <span className="flex-1">수입</span>
+                  <span className="flex-1">지출</span>
+                  <span className="flex-1">잔액</span>
                 </div>
               </div>
               
               {catData.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center text-xs py-1.5 px-1 rounded hover:bg-gray-50 transition-colors">
-                  <span className="font-medium text-gray-700 w-20 truncate">{item.name.replace(/☑/g, '').trim()}</span>
-                  <div className="flex gap-4 flex-1 justify-end text-right font-medium">
-                    <span className="text-blue-500 w-14 truncate">{item.income === 0 ? '-' : item.income.toLocaleString()}</span>
-                    <span className="text-red-500 w-14 truncate">{item.expense === 0 ? '-' : item.expense.toLocaleString()}</span>
-                    <span className={`w-14 truncate ${item.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <div key={idx} className="flex justify-between items-center text-xs py-1.5 px-1 rounded hover:bg-gray-50 transition-colors text-center">
+                  <span className="font-medium text-gray-700 w-[70px] whitespace-normal break-keep">{item.name.replace(/☑/g, '').trim()}</span>
+                  <div className="flex gap-1 flex-1 justify-center font-medium">
+                    <span className="text-blue-500 flex-1 whitespace-nowrap">{item.income === 0 ? '-' : item.income.toLocaleString()}</span>
+                    <span className="text-red-500 flex-1 whitespace-nowrap">{item.expense === 0 ? '-' : item.expense.toLocaleString()}</span>
+                    <span className={`flex-1 whitespace-nowrap ${item.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {item.balance === 0 ? '-' : item.balance.toLocaleString()}
                     </span>
                   </div>
@@ -225,18 +225,18 @@ export default function HistoryPage() {
                           className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors"
                           onClick={() => toggleSubCat(m, category)}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-[13px] font-bold text-gray-700">
+                          <div className="flex items-center gap-2 w-[70px]">
+                            <span className="text-[13px] font-bold text-gray-700 whitespace-normal break-keep text-center w-full">
                               {category === '교통비' && '🚗 '}
                               {category === '생활비' && '🛒 '}
                               {category === '예비비' && '💡 '}
                               {category}
                             </span>
                           </div>
-                          <div className="flex gap-4 text-[12px] font-medium text-right">
-                            <span className="w-14 text-blue-500">{catData.totalIncome === 0 ? '-' : catData.totalIncome.toLocaleString()}</span>
-                            <span className="w-14 text-red-500">{catData.totalExpense === 0 ? '-' : catData.totalExpense.toLocaleString()}</span>
-                            <span className={`w-16 font-bold ${catBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <div className="flex gap-1 flex-1 justify-center text-center text-[12px] font-medium">
+                            <span className="flex-1 text-blue-500 whitespace-nowrap">{catData.totalIncome === 0 ? '-' : catData.totalIncome.toLocaleString()}</span>
+                            <span className="flex-1 text-red-500 whitespace-nowrap">{catData.totalExpense === 0 ? '-' : catData.totalExpense.toLocaleString()}</span>
+                            <span className={`flex-1 font-bold whitespace-nowrap ${catBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {catBalance === 0 ? '-' : catBalance.toLocaleString()}
                             </span>
                           </div>
@@ -245,25 +245,25 @@ export default function HistoryPage() {
                         {/* 2단계 아코디언 (세부 항목 내역) */}
                         {isSubExpanded && (
                           <div className="px-4 pb-3 pt-1 bg-white">
-                            <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold mb-1 px-1">
-                              <span className="w-20">세부 항목</span>
-                              <div className="flex gap-4 flex-1 justify-end text-right">
-                                <span className="w-14">수입</span>
-                                <span className="w-14">지출</span>
-                                <span className="w-14">잔액</span>
+                            <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold mb-1 px-1 text-center">
+                              <span className="w-[70px]">세부 항목</span>
+                              <div className="flex gap-1 flex-1 justify-center">
+                                <span className="flex-1">수입</span>
+                                <span className="flex-1">지출</span>
+                                <span className="flex-1">잔액</span>
                               </div>
                             </div>
                             <div className="space-y-0.5">
                               {catData.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center text-[11px] py-1 px-1 rounded hover:bg-gray-50 transition-colors">
-                                  <span className="font-medium text-gray-600 w-20 truncate">
+                                <div key={idx} className="flex justify-between items-center text-[11px] py-1 px-1 rounded hover:bg-gray-50 transition-colors text-center">
+                                  <span className="font-medium text-gray-600 w-[70px] whitespace-normal break-keep">
                                     <span className="text-gray-300 mr-1">└</span>
                                     {item.name.replace(/☑/g, '').trim()}
                                   </span>
-                                  <div className="flex gap-4 flex-1 justify-end text-right">
-                                    <span className="text-blue-500/80 w-14 truncate">{item.income === 0 ? '-' : item.income.toLocaleString()}</span>
-                                    <span className="text-red-500/80 w-14 truncate">{item.expense === 0 ? '-' : item.expense.toLocaleString()}</span>
-                                    <span className={`w-14 truncate ${item.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  <div className="flex gap-1 flex-1 justify-center">
+                                    <span className="text-blue-500/80 flex-1 whitespace-nowrap">{item.income === 0 ? '-' : item.income.toLocaleString()}</span>
+                                    <span className="text-red-500/80 flex-1 whitespace-nowrap">{item.expense === 0 ? '-' : item.expense.toLocaleString()}</span>
+                                    <span className={`flex-1 whitespace-nowrap ${item.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                       {item.balance === 0 ? '-' : item.balance.toLocaleString()}
                                     </span>
                                   </div>
