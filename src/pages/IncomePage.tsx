@@ -81,8 +81,10 @@ export default function IncomePage() {
           setConfirmConfig(prev => ({ ...prev, isOpen: false }));
           setLoading(true);
           try {
+            const today = new Date().toISOString().split('T')[0];
             const dataToSubmit = targetBudgets.map(b => ({
               month: budgetMonth,
+              date: today,
               category: categoryName,
               subCategory: b.subCategory,
               amount: -b.amount,
@@ -111,8 +113,10 @@ export default function IncomePage() {
         setConfirmConfig(prev => ({ ...prev, isOpen: false }));
         setLoading(true);
         try {
+          const today = new Date().toISOString().split('T')[0];
           const dataToSubmit = targetBudgets.map(b => ({
             month: budgetMonth,
+            date: today,
             category: categoryName,
             subCategory: b.subCategory,
             amount: b.amount,
@@ -148,6 +152,7 @@ export default function IncomePage() {
     try {
       await appendIncome([{
         month: (new Date().getMonth() + 1).toString(),
+        date: new Date().toISOString().split('T')[0],
         category: mainCategory,
         subCategory: interestCategory,
         amount: Number(rawAmount),
@@ -189,6 +194,7 @@ export default function IncomePage() {
     try {
       await appendIncome([{
         month: (new Date().getMonth() + 1).toString(),
+        date: new Date().toISOString().split('T')[0],
         category: manualCat,
         subCategory: manualSub,
         amount: Number(rawAmount),
