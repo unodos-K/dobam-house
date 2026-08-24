@@ -220,11 +220,23 @@ export default function BudgetPage() {
     return <LoadingSpinner text="예산 데이터를 불러오는 중..." />;
   }
 
+  const totalBudgetSum = groupedData.reduce((acc, curr) => acc + curr.totalAmount, 0);
+
   return (
     <div className="pb-20 bg-gray-50/30" onClick={handleBackgroundClick}>
       <header className="sticky top-0 z-40 bg-[#f8f9fa]/90 backdrop-blur-md px-4 pt-8 pb-4 mb-4 border-b border-gray-100/80 shadow-sm flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-text">예산 관리</h1>
-        <p className="text-text-light text-sm">항목별 예산 및 계좌 정보</p>
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">예산 관리</h1>
+            <p className="text-gray-500 text-sm">항목별 예산 및 계좌 정보</p>
+          </div>
+          <div className="text-right pb-0.5">
+            <p className="text-[11px] font-bold text-gray-400 mb-0.5">총 예산 합계</p>
+            <p className="text-[17px] font-extrabold text-[#748E63] leading-none tracking-tight">
+              {totalBudgetSum.toLocaleString()}원
+            </p>
+          </div>
+        </div>
       </header>
 
       <div className="px-4">
