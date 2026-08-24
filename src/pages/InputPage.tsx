@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { getBudgets, getDashboard, appendIncome, appendExpense, getTransactions } from '../services/api';
+import { getBudgets, getDashboard, appendIncome, appendExpense, getTransactions, deleteTransaction, updateTransaction } from '../services/api';
 import { Budget, DashboardData, Transaction } from '../types';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, Plus, Trash2, Edit2, X, Save } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 interface InputPageProps {
@@ -22,6 +22,10 @@ export default function InputPage({ type }: InputPageProps) {
   const [filterMonth, setFilterMonth] = useState<string>(currentM);
   const [filterCat, setFilterCat] = useState<string>('전체');
   const [filterSubCat, setFilterSubCat] = useState<string>('전체');
+  
+  // 수정 기능 상태
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Transaction | null>(null);
 
   // 정기예산 월 선택
   const [budgetMonth, setBudgetMonth] = useState((new Date().getMonth() + 1).toString());
@@ -75,6 +79,42 @@ export default function InputPage({ type }: InputPageProps) {
   });
 
   const filteredTotal = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+  // 내역 삭제 및 수정 핸들러
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    setLoading(true);
+    try {
+      await deleteTransaction(id);
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      showToast('삭제가 완료되었습니다.');
+    } catch (err) {
+      showToast('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEdit = (t: Transaction) => {
+    setEditingId(t.id);
+    setEditForm({ ...t });
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm) return;
+    setLoading(true);
+    try {
+      await updateTransaction(editForm);
+      setTransactions(prev => prev.map(t => t.id === editForm.id ? editForm : t));
+      showToast('수정이 완료되었습니다.');
+      setEditingId(null);
+      setEditForm(null);
+    } catch (err) {
+      showToast('수정 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderTransactionList = () => (
     <div className="mt-12 space-y-4">
@@ -144,17 +184,82 @@ export default function InputPage({ type }: InputPageProps) {
           </div>
         ) : (
           filteredTransactions.map(t => (
-            <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center hover:bg-gray-50 transition-colors">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{t.category}</span>
-                  <span className="text-[11px] text-gray-400 font-medium">{t.date}</span>
+            <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 transition-colors">
+              {editingId === t.id && editForm ? (
+                // 수정 폼
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={editForm.date}
+                      onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                      className="bg-gray-50 border border-gray-200 text-gray-700 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none w-1/3"
+                    />
+                    <select
+                      value={editForm.category}
+                      onChange={e => setEditForm({ ...editForm, category: e.target.value })}
+                      className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none"
+                    >
+                      <option value="교통비">교통비</option>
+                      <option value="생활비">생활비</option>
+                      <option value="예비비">예비비</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editForm.content}
+                      onChange={e => setEditForm({ ...editForm, content: e.target.value })}
+                      className="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-[12px] rounded-lg px-2 py-1.5 focus:outline-none"
+                      placeholder="세부항목 / 메모"
+                    />
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={formatAmount(editForm.amount.toString())}
+                        onChange={e => {
+                          const val = parseAmount(e.target.value);
+                          setEditForm({ ...editForm, amount: Number(val) });
+                        }}
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-[12px] rounded-lg pl-2 pr-6 py-1.5 focus:outline-none"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">원</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-2">
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-[11px] font-bold text-gray-500 bg-gray-100 rounded-lg flex items-center gap-1">
+                      <X size={12} /> 취소
+                    </button>
+                    <button onClick={handleEditSave} className="px-3 py-1.5 text-[11px] font-bold text-white bg-blue-500 rounded-lg flex items-center gap-1">
+                      <Save size={12} /> 저장
+                    </button>
+                  </div>
                 </div>
-                <div className="text-[13px] font-bold text-gray-700">{t.content.replace(/☑/g, '').trim()}</div>
-              </div>
-              <div className={`font-bold text-[14px] ${isIncome ? 'text-blue-500' : 'text-red-500'}`}>
-                {isIncome ? '+' : '-'}{t.amount.toLocaleString()}원
-              </div>
+              ) : (
+                // 일반 뷰
+                <>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{t.category}</span>
+                        <span className="text-[11px] text-gray-400 font-medium">{t.date}</span>
+                      </div>
+                      <div className="text-[13px] font-bold text-gray-700">{t.content.replace(/☑/g, '').trim()}</div>
+                    </div>
+                    <div className={`font-bold text-[14px] ${isIncome ? 'text-blue-500' : 'text-red-500'}`}>
+                      {isIncome ? '+' : '-'}{t.amount.toLocaleString()}원
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-gray-50">
+                    <button onClick={() => startEdit(t)} className="text-gray-400 hover:text-blue-500 transition-colors">
+                      <Edit2 size={14} />
+                    </button>
+                    <button onClick={() => handleDelete(t.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))
         )}

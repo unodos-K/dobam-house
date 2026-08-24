@@ -158,6 +158,51 @@ export const appendExpense = async (dataArray: any[]) => {
   }
 };
 
+export const deleteTransaction = async (id: string) => {
+  if (USE_MOCK) {
+    const data = getMockData().filter(t => t.id !== id);
+    saveMockData(data);
+    return;
+  }
+  
+  try {
+    const response = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'deleteTransaction', data: { id } })
+    });
+    if (!response.ok) throw new Error('Network response error');
+    const result = await response.json();
+    if (result.status !== 'success') throw new Error('Failed to delete transaction');
+  } catch (err) {
+    console.error('API Error:', err);
+    throw err;
+  }
+};
+
+export const updateTransaction = async (transaction: Transaction) => {
+  if (USE_MOCK) {
+    const data = getMockData().map(t => t.id === transaction.id ? transaction : t);
+    saveMockData(data);
+    return transaction;
+  }
+  
+  try {
+    const response = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'updateTransaction', data: transaction })
+    });
+    if (!response.ok) throw new Error('Network response error');
+    const result = await response.json();
+    if (result.status !== 'success') throw new Error('Failed to update transaction');
+    return transaction;
+  } catch (err) {
+    console.error('API Error:', err);
+    throw err;
+  }
+};
+
 export const getDashboard = async (): Promise<DashboardData> => {
   if (USE_MOCK) {
     console.log('[API Mock] getDashboard 호출됨');
