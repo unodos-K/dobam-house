@@ -89,8 +89,12 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
     if (!editForm) return;
     setLoading(true);
     try {
-      await updateTransaction(editForm);
-      setTransactions(prev => prev.map(t => t.id === editForm.id ? editForm : t));
+      const updated = {
+        ...editForm,
+        content: ((editForm.subCategory || '') + ' ' + (editForm.memo || '')).trim()
+      };
+      await updateTransaction(updated);
+      setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
       onToast('수정이 완료되었습니다.');
       setEditingId(null);
       setEditForm(null);
