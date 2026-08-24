@@ -27,6 +27,9 @@ export default function IncomePage() {
   });
 
   const [budgetMonth, setBudgetMonth] = useState((new Date().getMonth() + 1).toString());
+  const [oneClickDate, setOneClickDate] = useState(new Date().toISOString().split('T')[0]);
+  const [interestDate, setInterestDate] = useState(new Date().toISOString().split('T')[0]);
+  const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
 
   const formatAmount = (val: string) => {
     const num = val.replace(/[^0-9]/g, '');
@@ -71,6 +74,11 @@ export default function IncomePage() {
       return;
     }
 
+    if (!oneClickDate) {
+      alert('날짜를 먼저 입력해주세요.');
+      return;
+    }
+
     if (isRegistered) {
       setConfirmConfig({
         isOpen: true,
@@ -81,10 +89,9 @@ export default function IncomePage() {
           setConfirmConfig(prev => ({ ...prev, isOpen: false }));
           setLoading(true);
           try {
-            const today = new Date().toISOString().split('T')[0];
             const dataToSubmit = targetBudgets.map(b => ({
               month: budgetMonth,
-              date: today,
+              date: oneClickDate,
               category: categoryName,
               subCategory: b.subCategory,
               amount: -b.amount,
@@ -113,10 +120,9 @@ export default function IncomePage() {
         setConfirmConfig(prev => ({ ...prev, isOpen: false }));
         setLoading(true);
         try {
-          const today = new Date().toISOString().split('T')[0];
           const dataToSubmit = targetBudgets.map(b => ({
             month: budgetMonth,
-            date: today,
+            date: oneClickDate,
             category: categoryName,
             subCategory: b.subCategory,
             amount: b.amount,
@@ -145,14 +151,19 @@ export default function IncomePage() {
       return;
     }
     
+    if (!interestDate) {
+      alert('날짜를 먼저 입력해주세요.');
+      return;
+    }
+    
     const mainCategory = interestCategory.includes('교통비') ? '교통비' : 
                          interestCategory.includes('예비비') ? '예비비' : '생활비';
 
     setLoading(true);
     try {
       await appendIncome([{
-        month: (new Date().getMonth() + 1).toString(),
-        date: new Date().toISOString().split('T')[0],
+        month: budgetMonth,
+        date: interestDate,
         category: mainCategory,
         subCategory: interestCategory,
         amount: Number(rawAmount),
@@ -190,11 +201,16 @@ export default function IncomePage() {
       return;
     }
     
+    if (!manualDate) {
+      alert('날짜를 먼저 입력해주세요.');
+      return;
+    }
+    
     setLoading(true);
     try {
       await appendIncome([{
-        month: (new Date().getMonth() + 1).toString(),
-        date: new Date().toISOString().split('T')[0],
+        month: budgetMonth,
+        date: manualDate,
         category: manualCat,
         subCategory: manualSub,
         amount: Number(rawAmount),
@@ -228,8 +244,21 @@ export default function IncomePage() {
   return (
     <div className="pb-24 bg-gray-50/30">
       <header className="sticky top-0 z-40 bg-[#f8f9fa]/90 backdrop-blur-md px-4 pt-8 pb-4 mb-4 border-b border-gray-100/80 shadow-sm flex flex-col gap-1 max-w-[480px] mx-auto w-full">
-        <h1 className="text-2xl font-bold text-text">수입 입력</h1>
-        <p className="text-text-light text-sm mt-1">다양한 유형의 수입을 편리하게 기록하세요</p>
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-bold text-text">수입 입력</h1>
+            <p className="text-text-light text-sm mt-1">다양한 유형의 수입을 편리하게 기록하세요</p>
+          </div>
+          <select
+            value={budgetMonth}
+            onChange={(e) => setBudgetMonth(e.target.value)}
+            className="bg-white border border-gray-200 text-gray-800 font-bold text-sm rounded-xl px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            {Array.from({length: 12}, (_, i) => (i + 1).toString()).map(m => (
+              <option key={m} value={m}>{m}월</option>
+            ))}
+          </select>
+        </div>
       </header>
 
       <div className="px-4 max-w-[480px] mx-auto w-full">
@@ -242,15 +271,12 @@ export default function IncomePage() {
               <h2 className="text-[15px] font-bold text-gray-800 flex items-center gap-2">
                 <span>🎯</span> 정기 예산 원클릭 입금
               </h2>
-              <select
-                value={budgetMonth}
-                onChange={(e) => setBudgetMonth(e.target.value)}
-                className="bg-gray-100 border-none text-gray-700 font-bold text-xs rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                {Array.from({length: 12}, (_, i) => (i + 1).toString()).map(m => (
-                  <option key={m} value={m}>{m}월</option>
-                ))}
-              </select>
+              <input
+                type="date"
+                value={oneClickDate}
+                onChange={(e) => setOneClickDate(e.target.value)}
+                className="bg-gray-50 border border-gray-200 text-gray-700 font-medium text-[13px] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
             </div>
             <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
               선택한 월의 정기 예산 항목들을 수입으로 일괄 자동 등록합니다.
@@ -296,6 +322,12 @@ export default function IncomePage() {
               <span>💰</span> 통장 이자 (소액 수입)
             </h2>
             <div className="flex gap-2">
+              <input
+                type="date"
+                value={interestDate}
+                onChange={(e) => setInterestDate(e.target.value)}
+                className="bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-2 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 w-1/3"
+              />
               <select
                 value={interestCategory}
                 onChange={(e) => setInterestCategory(e.target.value)}
@@ -330,6 +362,12 @@ export default function IncomePage() {
             </h2>
             <div className="space-y-3">
               <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={manualDate}
+                  onChange={(e) => setManualDate(e.target.value)}
+                  className="bg-gray-50 border border-gray-200 text-gray-700 text-[13px] font-medium rounded-xl px-2 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 w-1/3"
+                />
                 <select
                   value={manualCat}
                   onChange={(e) => setManualCat(e.target.value)}
