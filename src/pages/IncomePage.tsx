@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { getBudgets, getDashboard, appendIncome } from '../services/api';
 import { Budget, DashboardData } from '../types';
 import { Check, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DataLoadError from '../components/DataLoadError';
 import ConfirmModal from '../components/ConfirmModal';
 import BalanceWidget from '../components/BalanceWidget';
 
@@ -11,6 +12,8 @@ export default function IncomePage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -47,6 +50,7 @@ export default function IncomePage() {
     amount: '',
     memo: ''
   }]);
+  const amountInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const formatAmount = (val: string) => {
     const num = val.replace(/[^0-9]/g, '');
@@ -63,10 +67,26 @@ export default function IncomePage() {
     return Array.from(new Set(options));
   };
 
-  useEffect(() => {
-    getBudgets().then(setBudgets).catch(console.error);
-    getDashboard().then(setDashboardData).catch(console.error);
+  const loadData = useCallback(async () => {
+    setInitialLoading(true);
+    setLoadError(false);
+    try {
+      const [budgetData, dashboard] = await Promise.all([getBudgets(), getDashboard()]);
+      setBudgets(budgetData);
+      setDashboardData(dashboard);
+    } catch {
+      setBudgets([]);
+      setDashboardData(null);
+      setLoadError(true);
+    } finally {
+      setInitialLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void loadData(); }, [loadData]);
+
+  if (initialLoading) return <LoadingSpinner text="수입 데이터를 불러오는 중..." />;
+  if (loadError) return <DataLoadError onRetry={loadData} isRetrying={initialLoading} />;
 
   const isBudgetRegistered = (cat: string) => {
     if (!dashboardData) return false;
@@ -118,7 +138,7 @@ export default function IncomePage() {
             const newData = await getDashboard();
             setDashboardData(newData);
             showToast(`${budgetMonth}월 ${categoryName} 입금이 취소되었습니다.`);
-          } catch (err) {
+          } catch {
             showToast('취소 처리 중 오류가 발생했습니다.');
           } finally {
             setLoading(false);
@@ -149,7 +169,7 @@ export default function IncomePage() {
           const newData = await getDashboard();
           setDashboardData(newData);
           showToast(`${budgetMonth}월 ${categoryName} 예산 입금이 완료되었습니다.`);
-        } catch (err) {
+        } catch {
           showToast('등록 중 오류가 발생했습니다.');
         } finally {
           setLoading(false);
@@ -157,8 +177,6 @@ export default function IncomePage() {
       }
     });
   };
-
-  const amountInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const addIncomeRow = () => {
     if (incomeRows.length >= 20) {
@@ -234,7 +252,7 @@ export default function IncomePage() {
         amount: '',
         memo: ''
       }]);
-    } catch (err) {
+    } catch {
       showToast('전송 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

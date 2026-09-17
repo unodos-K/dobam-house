@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { Copy, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { getBudgets } from '../services/api';
 import { Budget } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DataLoadError from '../components/DataLoadError';
 
 // 기본 색상 팔레트
 const COLORS = ['#f43f5e', '#fcd34d', '#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#14b8a6'];
@@ -20,24 +21,25 @@ interface GroupedBudget {
 export default function BudgetPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [lockedIndex, setLockedIndex] = useState(-1); // 클릭으로 고정된 인덱스
 
-  useEffect(() => {
-    const fetchBudgets = async () => {
-      try {
-        const data = await getBudgets();
-        setBudgets(data);
-      } catch (error) {
-        console.error('Failed to fetch budgets', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBudgets();
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      setBudgets(await getBudgets());
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -218,6 +220,10 @@ export default function BudgetPage() {
 
   if (loading) {
     return <LoadingSpinner text="예산 데이터를 불러오는 중..." />;
+  }
+
+  if (loadError) {
+    return <DataLoadError onRetry={loadData} isRetrying={loading} />;
   }
 
   const totalBudgetSum = groupedData.reduce((acc, curr) => acc + curr.totalAmount, 0);

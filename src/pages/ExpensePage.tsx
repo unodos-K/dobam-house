@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { getBudgets, appendExpense, getDashboard } from '../services/api';
 import { Budget, DashboardData } from '../types';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DataLoadError from '../components/DataLoadError';
 import BalanceWidget from '../components/BalanceWidget';
 
 export default function ExpensePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [expenseMonth, setExpenseMonth] = useState((new Date().getMonth() + 1).toString());
@@ -32,11 +35,28 @@ export default function ExpensePage() {
     amount: '',
     memo: ''
   }]);
+  const amountInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  useEffect(() => {
-    getBudgets().then(setBudgets).catch(console.error);
-    getDashboard().then(setDashboardData).catch(console.error);
+  const loadData = useCallback(async () => {
+    setInitialLoading(true);
+    setLoadError(false);
+    try {
+      const [budgetData, dashboard] = await Promise.all([getBudgets(), getDashboard()]);
+      setBudgets(budgetData);
+      setDashboardData(dashboard);
+    } catch {
+      setBudgets([]);
+      setDashboardData(null);
+      setLoadError(true);
+    } finally {
+      setInitialLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void loadData(); }, [loadData]);
+
+  if (initialLoading) return <LoadingSpinner text="지출 데이터를 불러오는 중..." />;
+  if (loadError) return <DataLoadError onRetry={loadData} isRetrying={initialLoading} />;
 
   const formatAmount = (val: string) => {
     const num = val.replace(/[^0-9]/g, '');
@@ -57,8 +77,6 @@ export default function ExpensePage() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
-
-  const amountInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const addExpenseRow = () => {
     if (expenseRows.length >= 20) {
@@ -135,7 +153,7 @@ export default function ExpensePage() {
         amount: '',
         memo: ''
       }]);
-    } catch (err) {
+    } catch {
       showToast('전송 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

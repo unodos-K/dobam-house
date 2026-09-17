@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getTransactions, deleteTransaction, updateTransaction } from '../services/api';
+import { deleteTransaction, updateTransaction } from '../services/api';
 import { Budget, Transaction } from '../types';
 import { Edit2, Save, Trash2, X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
@@ -8,13 +8,14 @@ import ConfirmModal from './ConfirmModal';
 interface TransactionListProps {
   isIncome: boolean;
   budgets: Budget[];
-  refreshTrigger: number;
+  transactions: Transaction[];
+  initialLoading: boolean;
   onToast: (msg: string) => void;
   filterDate?: string;
 }
 
-export default function TransactionList({ isIncome, budgets, refreshTrigger, onToast, filterDate }: TransactionListProps) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+export default function TransactionList({ isIncome, budgets, transactions, initialLoading, onToast, filterDate }: TransactionListProps) {
+  const [localTransactions, setLocalTransactions] = useState<Transaction[]>(transactions);
   const currentM = (new Date().getMonth() + 1).toString();
   const [filterMonth, setFilterMonth] = useState<string>(currentM);
   const [filterCat, setFilterCat] = useState<string>('전체');
@@ -24,7 +25,6 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
 
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -40,10 +40,7 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
     onConfirm: () => {}
   });
 
-  useEffect(() => {
-    setInitialLoading(true);
-    getTransactions().then(setTransactions).catch(console.error).finally(() => setInitialLoading(false));
-  }, [isIncome, refreshTrigger]);
+  useEffect(() => { setLocalTransactions(transactions); }, [transactions]);
 
   const formatAmount = (val: string) => {
     const num = val.replace(/[^0-9]/g, '');
@@ -67,7 +64,7 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
 
   const filterSubOptions = filterCat === '전체' ? [] : getSubOptionsByCategory(filterCat);
 
-  const filteredTransactions = transactions.filter(t => {
+  const filteredTransactions = localTransactions.filter(t => {
     if (isIncome && t.type !== '수입') return false;
     if (!isIncome && t.type !== '지출') return false;
     
@@ -107,9 +104,9 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
         setLoading(true);
         try {
           await deleteTransaction(id);
-          setTransactions(prev => prev.filter(t => t.id !== id));
+          setLocalTransactions(prev => prev.filter(t => t.id !== id));
           onToast('삭제가 완료되었습니다.');
-        } catch (err) {
+        } catch {
           onToast('삭제 중 오류가 발생했습니다.');
         } finally {
           setLoading(false);
@@ -132,11 +129,11 @@ export default function TransactionList({ isIncome, budgets, refreshTrigger, onT
         content: ((editForm.subCategory || '') + ' ' + (editForm.memo || '')).trim()
       };
       await updateTransaction(updated);
-      setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
+      setLocalTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
       onToast('수정이 완료되었습니다.');
       setEditingId(null);
       setEditForm(null);
-    } catch (err) {
+    } catch {
       onToast('수정 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

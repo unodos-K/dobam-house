@@ -33,10 +33,6 @@ export const getBudgets = async (): Promise<Budget[]> => {
     const { data, error } = await supabase.from('budgets').select('*');
     if (error) throw error;
     
-    if (!data || data.length === 0) {
-       return mockBudgets;
-    }
-    
     // 마이그레이션 중복 방지를 위한 데이터 덮어쓰기(Deduplication) 로직
     const uniqueBudgetsMap = new Map();
     data.forEach(item => {
@@ -49,7 +45,7 @@ export const getBudgets = async (): Promise<Budget[]> => {
     return Array.from(uniqueBudgetsMap.values()) as Budget[];
   } catch (error) {
     console.error('API Error (getBudgets):', error);
-    return mockBudgets; // 에러 시 폴백
+    throw error;
   }
 };
 

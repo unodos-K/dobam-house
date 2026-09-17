@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { getBudgets, getTransactions } from '../services/api';
 import { Budget, Transaction, DashboardData } from '../types';
 import TransactionList from '../components/TransactionList';
 import BalanceWidget from '../components/BalanceWidget';
 import { Check } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
+import DataLoadError from '../components/DataLoadError';
 
 export default function TransactionsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -13,14 +15,27 @@ export default function TransactionsPage() {
   
   const [filterDate, setFilterDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    getBudgets().then(setBudgets).catch(console.error);
+  const loadData = useCallback(async () => {
+    setInitialLoading(true);
+    setLoadError(false);
+    try {
+      const [budgetData, transactionData] = await Promise.all([getBudgets(), getTransactions()]);
+      setBudgets(budgetData);
+      setTransactions(transactionData);
+    } catch {
+      setBudgets([]);
+      setTransactions([]);
+      setDashboardData(null);
+      setLoadError(true);
+    } finally {
+      setInitialLoading(false);
+    }
   }, []);
 
-  useEffect(() => {
-    getTransactions().then(setTransactions).catch(console.error);
-  }, [refreshTrigger]);
+  useEffect(() => { void loadData(); }, [loadData, refreshTrigger]);
 
   useEffect(() => {
     if (transactions.length === 0) return;
@@ -61,6 +76,9 @@ export default function TransactionsPage() {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  if (initialLoading) return <LoadingSpinner text="거래 데이터를 불러오는 중..." />;
+  if (loadError) return <DataLoadError onRetry={loadData} isRetrying={initialLoading} />;
+
   return (
     <div className="pb-24 bg-gray-50/30 min-h-screen">
       <header className="sticky top-0 z-40 bg-[#f8f9fa]/90 backdrop-blur-md px-4 pt-8 pb-4 mb-4 border-b border-gray-100/80 shadow-sm flex flex-col gap-1 max-w-[480px] mx-auto w-full">
@@ -97,7 +115,8 @@ export default function TransactionsPage() {
           <TransactionList 
             isIncome={false} 
             budgets={budgets} 
-            refreshTrigger={refreshTrigger} 
+            transactions={transactions}
+            initialLoading={initialLoading}
             onToast={(msg) => { showToast(msg); handleRefresh(); }} 
             filterDate={filterDate}
           />
@@ -110,7 +129,8 @@ export default function TransactionsPage() {
           <TransactionList 
             isIncome={true} 
             budgets={budgets} 
-            refreshTrigger={refreshTrigger} 
+            transactions={transactions}
+            initialLoading={initialLoading}
             onToast={(msg) => { showToast(msg); handleRefresh(); }} 
             filterDate={filterDate}
           />

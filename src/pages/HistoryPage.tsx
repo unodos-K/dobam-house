@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getDashboard } from '../services/api';
 import { DashboardData, DashboardCategory } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DataLoadError from '../components/DataLoadError';
 
 type ViewMode = 'month' | 'cumulative' | 'matrix';
 
 export default function HistoryPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const currentMonth = (new Date().getMonth() + 1).toString();
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
@@ -22,22 +24,27 @@ export default function HistoryPage() {
     setExpandedSubCats(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]);
   };
   
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const result = await getDashboard();
-        setData(result);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      setData(await getDashboard());
+    } catch {
+      setData(null);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void loadData(); }, [loadData]);
 
   if (loading) {
     return <LoadingSpinner text="내역 데이터를 불러오는 중..." />;
+  }
+
+  if (loadError) {
+    return <DataLoadError onRetry={loadData} isRetrying={loading} />;
   }
 
   if (!data || Object.keys(data).length === 0) {
