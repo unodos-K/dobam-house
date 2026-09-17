@@ -5,6 +5,7 @@ import { Check, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DataLoadError from '../components/DataLoadError';
 import BalanceWidget from '../components/BalanceWidget';
+import { getDefaultSubCategory, getSubOptionsByCategory } from '../utils/budgetCategories';
 
 export default function ExpensePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -43,6 +44,12 @@ export default function ExpensePage() {
     try {
       const [budgetData, dashboard] = await Promise.all([getBudgets(), getDashboard()]);
       setBudgets(budgetData);
+      setExpenseRows(prev => prev.map(row => {
+        const options = getSubOptionsByCategory(budgetData, row.category);
+        return row.subCategory && options.includes(row.subCategory)
+          ? row
+          : { ...row, subCategory: options[0] ?? '' };
+      }));
       setDashboardData(dashboard);
     } catch {
       setBudgets([]);
@@ -65,14 +72,6 @@ export default function ExpensePage() {
   };
   const parseAmount = (val: string) => val.replace(/[^0-9]/g, '');
 
-  const getSubOptionsByCategory = (cat: string) => {
-    const options = budgets.filter(b => b.category === cat).map(b => b.subCategory);
-    if (cat === '생활비' && !options.includes('생활비 기타')) options.push('생활비 기타');
-    if (cat === '교통비' && !options.includes('교통비 기타')) options.push('교통비 기타');
-    if (cat === '예비비' && !options.includes('기타예비비')) options.push('기타예비비');
-    return Array.from(new Set(options));
-  };
-
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
@@ -88,7 +87,7 @@ export default function ExpensePage() {
       id: Date.now().toString(),
       date: lastRow.date,
       category: lastRow.category,
-      subCategory: lastRow.subCategory,
+      subCategory: getDefaultSubCategory(budgets, lastRow.category),
       amount: '',
       memo: ''
     }]);
@@ -116,7 +115,10 @@ export default function ExpensePage() {
     setExpenseRows(expenseRows.map(r => {
       if (r.id === id) {
         const updated = { ...r, [field]: value };
-        if (field === 'category') updated.subCategory = '';
+        if (field === 'category') {
+          const options = getSubOptionsByCategory(budgets, value);
+          updated.subCategory = options.includes(r.subCategory) ? r.subCategory : options[0] ?? '';
+        }
         return updated;
       }
       return r;
@@ -124,7 +126,10 @@ export default function ExpensePage() {
   };
 
   const handleExpenseSubmit = async () => {
-    const invalidRow = expenseRows.find(r => !r.category || !r.subCategory || !parseAmount(r.amount));
+    const invalidRow = expenseRows.find(r => {
+      const options = getSubOptionsByCategory(budgets, r.category);
+      return !r.category || !r.subCategory || !options.includes(r.subCategory) || !parseAmount(r.amount);
+    });
     if (invalidRow) {
       showToast('모든 항목의 세부 분류와 금액을 올바르게 입력해주세요.');
       return;
@@ -149,7 +154,7 @@ export default function ExpensePage() {
         id: Date.now().toString(),
         date: today,
         category: '생활비',
-        subCategory: '',
+        subCategory: getDefaultSubCategory(budgets, '생활비'),
         amount: '',
         memo: ''
       }]);
@@ -188,11 +193,7 @@ export default function ExpensePage() {
 
         <div className="space-y-4 relative">
           {expenseRows.map((row, index) => {
-            const subOptions = getSubOptionsByCategory(row.category);
-            if (!row.subCategory && subOptions.length > 0) {
-               updateExpenseRow(row.id, 'subCategory', subOptions[0]);
-            }
-
+            const subOptions = getSubOptionsByCategory(budgets, row.category);
             return (
               <div key={row.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative">
                 <div className="flex justify-between items-center mb-3">
