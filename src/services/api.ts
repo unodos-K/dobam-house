@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Transaction, Budget, DashboardData } from '../types';
+import { Transaction, Budget, DashboardData, BudgetOneClickStatus, IncomeInsert, ExpenseInsert } from '../types';
 
 // 환경 변수로 Mock 사용 여부 강제 제어 가능
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
@@ -87,7 +87,7 @@ export const getTransactions = async (): Promise<Transaction[]> => {
   }
 };
 
-export const appendIncome = async (dataArray: any[]) => {
+export const appendIncome = async (dataArray: IncomeInsert[]) => {
   if (USE_MOCK) return;
 
   try {
@@ -99,7 +99,95 @@ export const appendIncome = async (dataArray: any[]) => {
   }
 };
 
-export const appendExpense = async (dataArray: any[]) => {
+const createBatchId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  throw new Error('이 환경에서는 안전한 원클릭 batch ID를 생성할 수 없습니다.');
+};
+
+export const getBudgetOneClickStatus = async (month: string, category: string): Promise<BudgetOneClickStatus> => {
+  if (USE_MOCK) {
+    const rows = getMockData().filter(t => t.type === '수입' && t.date.slice(5, 7) === month.padStart(2, '0') && t.category === category);
+    const active = rows.find(t => t.source === 'budget_one_click' && t.batch_id);
+    return { activeBatchId: active?.batch_id || null, legacyUnmanaged: false };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('incomes')
+      .select('batch_id, amount, memo, source')
+      .eq('month', month)
+      .eq('category', category)
+      .eq('source', 'budget_one_click');
+    if (error) throw error;
+
+    const activeBatch = (data || []).find(row => row.batch_id);
+    const hasLegacyPositive = (data || []).some(row => !row.batch_id && Number(row.amount) > 0 && row.memo === '정기 예산 원클릭');
+    const hasLegacyCancel = (data || []).some(row => !row.batch_id && Number(row.amount) < 0 && row.memo === '정기 예산 원클릭 (취소)');
+    return {
+      activeBatchId: activeBatch?.batch_id || null,
+      legacyUnmanaged: !activeBatch && hasLegacyPositive && !hasLegacyCancel
+    };
+  } catch (error) {
+    console.error('API Error (getBudgetOneClickStatus):', error);
+    throw error;
+  }
+};
+
+export const createBudgetOneClick = async (input: Omit<IncomeInsert, 'source' | 'batch_id' | 'subCategory' | 'amount'>) => {
+  const batchId = createBatchId();
+  if (USE_MOCK) {
+    const mockRows = getMockData();
+    const rows = mockRows.filter(t => t.type === '수입' && t.source === 'budget_one_click' && t.batch_id && t.date.slice(5, 7) === input.month.padStart(2, '0') && t.category === input.category);
+    if (rows.length > 0) throw new Error('활성 원클릭 입금이 이미 존재합니다.');
+    saveMockData([...mockRows, {
+      id: batchId,
+      date: input.date,
+      type: '수입',
+      category: input.category,
+      subCategory: input.category,
+      memo: input.memo,
+      content: input.memo,
+      amount: 0,
+      source: 'budget_one_click',
+      batch_id: batchId
+    }]);
+    return batchId;
+  }
+
+  try {
+    const { error } = await supabase.rpc('create_budget_one_click', {
+      p_month: input.month,
+      p_date: input.date,
+      p_category: input.category,
+      p_batch_id: batchId
+    });
+    if (error) throw error;
+    return batchId;
+  } catch (error) {
+    console.error('API Error (createBudgetOneClick):', error);
+    throw error;
+  }
+};
+
+export const cancelBudgetOneClick = async (batchId: string | null) => {
+  if (!batchId) throw new Error('기존 원클릭 기록은 batch 식별자가 없어 자동 취소할 수 없습니다.');
+  if (USE_MOCK) {
+    saveMockData(getMockData().filter(t => t.batch_id !== batchId));
+    return;
+  }
+
+  try {
+    const { error } = await supabase.rpc('cancel_budget_one_click', { p_batch_id: batchId });
+    if (error) throw error;
+  } catch (error) {
+    console.error('API Error (cancelBudgetOneClick):', error);
+    throw error;
+  }
+};
+
+export const appendExpense = async (dataArray: ExpenseInsert[]) => {
   if (USE_MOCK) return;
 
   try {
@@ -139,11 +227,13 @@ export const updateTransaction = async (transaction: Transaction) => {
   }
   
   try {
-    const { id, type, content, ...rest } = transaction; // content is extra for supabase
+    const { id, type } = transaction;
     const table = type === '지출' ? 'expenses' : 'incomes';
-    
-    // We update everything except type and content
-    const { error } = await supabase.from(table).update(rest).eq('id', id);
+    const updateData = type === '지출'
+      ? { date: transaction.date, category: transaction.category, subCategory: transaction.subCategory, amount: transaction.amount, memo: transaction.memo || '' }
+      : { date: transaction.date, category: transaction.category, subCategory: transaction.subCategory, amount: transaction.amount, memo: transaction.memo || '', source: transaction.source || 'manual', batch_id: transaction.batch_id || null };
+
+    const { error } = await supabase.from(table).update(updateData).eq('id', id);
     if (error) throw error;
     
     return transaction;

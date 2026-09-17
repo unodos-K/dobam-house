@@ -1,15 +1,18 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { getBudgets, getDashboard, appendIncome } from '../services/api';
-import { Budget, DashboardData } from '../types';
+import { getBudgets, getDashboard, appendIncome, getBudgetOneClickStatus, createBudgetOneClick, cancelBudgetOneClick } from '../services/api';
+import { Budget, DashboardData, BudgetOneClickStatus } from '../types';
 import { Check, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DataLoadError from '../components/DataLoadError';
 import ConfirmModal from '../components/ConfirmModal';
 import BalanceWidget from '../components/BalanceWidget';
 
+const BUDGET_CATEGORIES = ['교통비', '생활비', '예비비'] as const;
+
 export default function IncomePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [oneClickStatuses, setOneClickStatuses] = useState<Record<string, BudgetOneClickStatus>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -71,9 +74,14 @@ export default function IncomePage() {
     setInitialLoading(true);
     setLoadError(false);
     try {
-      const [budgetData, dashboard] = await Promise.all([getBudgets(), getDashboard()]);
+      const [budgetData, dashboard, statuses] = await Promise.all([
+        getBudgets(),
+        getDashboard(),
+        Promise.all(BUDGET_CATEGORIES.map(category => getBudgetOneClickStatus(budgetMonth, category)))
+      ]);
       setBudgets(budgetData);
       setDashboardData(dashboard);
+      setOneClickStatuses(Object.fromEntries(BUDGET_CATEGORIES.map((category, index) => [category, statuses[index]])));
     } catch {
       setBudgets([]);
       setDashboardData(null);
@@ -81,7 +89,7 @@ export default function IncomePage() {
     } finally {
       setInitialLoading(false);
     }
-  }, []);
+  }, [budgetMonth]);
 
   useEffect(() => { void loadData(); }, [loadData]);
 
@@ -89,12 +97,22 @@ export default function IncomePage() {
   if (loadError) return <DataLoadError onRetry={loadData} isRetrying={initialLoading} />;
 
   const isBudgetRegistered = (cat: string) => {
-    if (!dashboardData) return false;
-    const monthData = dashboardData[budgetMonth];
-    if (!monthData || !monthData[cat]) return false;
-    
-    const budgetSum = budgets.filter(b => b.category === cat).reduce((sum, b) => sum + b.amount, 0);
-    return budgetSum > 0 && monthData[cat].totalIncome >= budgetSum;
+    const status = oneClickStatuses[cat];
+    return Boolean(status?.activeBatchId || status?.legacyUnmanaged);
+  };
+
+  const refreshData = async () => {
+    try {
+      const [dashboard, statuses] = await Promise.all([
+        getDashboard(),
+        Promise.all(BUDGET_CATEGORIES.map(category => getBudgetOneClickStatus(budgetMonth, category)))
+      ]);
+      setDashboardData(dashboard);
+      setOneClickStatuses(Object.fromEntries(BUDGET_CATEGORIES.map((category, index) => [category, statuses[index]])));
+    } catch (error) {
+      setLoadError(true);
+      throw error;
+    }
   };
 
   const showToast = (msg: string) => {
@@ -103,8 +121,8 @@ export default function IncomePage() {
   };
 
   const handleOneClickBudget = async (categoryName: string) => {
-    const isRegistered = isBudgetRegistered(categoryName);
     const targetBudgets = budgets.filter(b => b.category === categoryName);
+    const status = oneClickStatuses[categoryName];
     
     if (targetBudgets.length === 0) {
       showToast(`${categoryName}에 해당하는 예산 항목이 없습니다.`);
@@ -116,27 +134,23 @@ export default function IncomePage() {
       return;
     }
 
-    if (isRegistered) {
+    if (status?.legacyUnmanaged && !status.activeBatchId) {
+      showToast('기존 원클릭 기록은 식별자가 없어 자동 취소할 수 없습니다.');
+      return;
+    }
+
+    if (status?.activeBatchId) {
       setConfirmConfig({
         isOpen: true,
         title: '정기예산 입금 취소',
-        message: `${budgetMonth}월 ${categoryName} 입금을 취소하시겠습니까?\n(마이너스 금액으로 장부에 상계 처리됩니다)`,
+        message: `${budgetMonth}월 ${categoryName} 원클릭 입금 내역을 삭제하시겠습니까?`,
         confirmText: '입금 취소',
         onConfirm: async () => {
           setConfirmConfig(prev => ({ ...prev, isOpen: false }));
           setLoading(true);
           try {
-            const dataToSubmit = targetBudgets.map(b => ({
-              month: budgetMonth,
-              date: oneClickDate,
-              category: categoryName,
-              subCategory: b.subCategory,
-              amount: -b.amount,
-              memo: '정기 예산 원클릭 (취소)'
-            }));
-            await appendIncome(dataToSubmit);
-            const newData = await getDashboard();
-            setDashboardData(newData);
+            await cancelBudgetOneClick(status.activeBatchId);
+            await refreshData();
             showToast(`${budgetMonth}월 ${categoryName} 입금이 취소되었습니다.`);
           } catch {
             showToast('취소 처리 중 오류가 발생했습니다.');
@@ -157,17 +171,13 @@ export default function IncomePage() {
         setConfirmConfig(prev => ({ ...prev, isOpen: false }));
         setLoading(true);
         try {
-          const dataToSubmit = targetBudgets.map(b => ({
+          await createBudgetOneClick({
             month: budgetMonth,
             date: oneClickDate,
             category: categoryName,
-            subCategory: b.subCategory,
-            amount: b.amount,
             memo: '정기 예산 원클릭'
-          }));
-          await appendIncome(dataToSubmit);
-          const newData = await getDashboard();
-          setDashboardData(newData);
+          });
+          await refreshData();
           showToast(`${budgetMonth}월 ${categoryName} 예산 입금이 완료되었습니다.`);
         } catch {
           showToast('등록 중 오류가 발생했습니다.');
@@ -237,7 +247,9 @@ export default function IncomePage() {
         category: r.category,
         subCategory: r.subCategory,
         amount: Number(parseAmount(r.amount)),
-        memo: r.memo
+        memo: r.memo,
+        source: 'manual' as const,
+        batch_id: null
       }));
       await appendIncome(dataToSubmit);
       const newData = await getDashboard();
@@ -300,20 +312,31 @@ export default function IncomePage() {
               선택한 월의 정기 예산 항목들을 수입으로 일괄 자동 등록합니다.
             </p>
             <div className="grid grid-cols-3 gap-2">
-              {['교통비', '생활비', '예비비'].map(cat => {
+              {BUDGET_CATEGORIES.map(cat => {
                 const registered = isBudgetRegistered(cat);
+                const legacy = oneClickStatuses[cat]?.legacyUnmanaged === true;
                 return (
                   <button
                     key={cat}
                     onClick={() => handleOneClickBudget(cat)}
                     disabled={loading}
                     className={`group relative flex flex-col items-center justify-center gap-1.5 p-4 rounded-[20px] transition-all overflow-hidden ${
-                      registered 
+                      legacy
+                        ? 'bg-amber-50 border border-amber-200 shadow-inner'
+                        : registered
                         ? 'bg-[#EAF1E4] border border-[#d3e2c6] shadow-inner' 
                         : 'bg-white shadow-sm border border-gray-100 hover:-translate-y-1 hover:shadow-md'
                     }`}
                   >
-                    {registered ? (
+                    {legacy ? (
+                      <>
+                        <div className="flex flex-col items-center justify-center">
+                          <CheckCircle2 size={24} className="text-amber-500 mb-1" />
+                          <span className="font-extrabold text-[13px] text-amber-700">기존 입금 완료</span>
+                        </div>
+                        <div className="mt-1 text-[10px] font-medium text-amber-700">자동 취소 불가</div>
+                      </>
+                    ) : registered ? (
                       <>
                         <div className="flex flex-col items-center justify-center transition-opacity duration-300 group-hover:opacity-0 group-active:opacity-0">
                           <CheckCircle2 size={24} className="text-[#748E63] mb-1" />
