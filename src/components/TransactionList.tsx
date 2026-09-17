@@ -9,13 +9,13 @@ interface TransactionListProps {
   isIncome: boolean;
   budgets: Budget[];
   transactions: Transaction[];
-  initialLoading: boolean;
+  onTransactionDeleted: (id: string) => void;
+  onTransactionUpdated: (transaction: Transaction) => void;
   onToast: (msg: string) => void;
   filterDate?: string;
 }
 
-export default function TransactionList({ isIncome, budgets, transactions, initialLoading, onToast, filterDate }: TransactionListProps) {
-  const [localTransactions, setLocalTransactions] = useState<Transaction[]>(transactions);
+export default function TransactionList({ isIncome, budgets, transactions, onTransactionDeleted, onTransactionUpdated, onToast, filterDate }: TransactionListProps) {
   const currentM = (new Date().getMonth() + 1).toString();
   const [filterMonth, setFilterMonth] = useState<string>(currentM);
   const [filterCat, setFilterCat] = useState<string>('전체');
@@ -40,8 +40,6 @@ export default function TransactionList({ isIncome, budgets, transactions, initi
     onConfirm: () => {}
   });
 
-  useEffect(() => { setLocalTransactions(transactions); }, [transactions]);
-
   const formatAmount = (val: string) => {
     const num = val.replace(/[^0-9]/g, '');
     if (!num) return '';
@@ -64,9 +62,7 @@ export default function TransactionList({ isIncome, budgets, transactions, initi
 
   const filterSubOptions = filterCat === '전체' ? [] : getSubOptionsByCategory(filterCat);
 
-  const filteredTransactions = localTransactions.filter(t => {
-    if (isIncome && t.type !== '수입') return false;
-    if (!isIncome && t.type !== '지출') return false;
+  const filteredTransactions = transactions.filter(t => {
     
     // filterDate props가 있을 때 선택된 날짜 이후 데이터 제외
     if (filterDate && t.date > filterDate) return false;
@@ -103,8 +99,10 @@ export default function TransactionList({ isIncome, budgets, transactions, initi
         setConfirmConfig(prev => ({ ...prev, isOpen: false }));
         setLoading(true);
         try {
-          await deleteTransaction(id);
-          setLocalTransactions(prev => prev.filter(t => t.id !== id));
+          const transaction = transactions.find(t => t.id === id);
+          if (!transaction || transaction.source === 'budget_one_click') throw new Error('원클릭 예산은 수입 입력 화면에서 취소해야 합니다.');
+          await deleteTransaction(id, transaction.type);
+          onTransactionDeleted(id);
           onToast('삭제가 완료되었습니다.');
         } catch {
           onToast('삭제 중 오류가 발생했습니다.');
@@ -129,7 +127,7 @@ export default function TransactionList({ isIncome, budgets, transactions, initi
         content: ((editForm.subCategory || '') + ' ' + (editForm.memo || '')).trim()
       };
       await updateTransaction(updated);
-      setLocalTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
+      onTransactionUpdated(updated);
       onToast('수정이 완료되었습니다.');
       setEditingId(null);
       setEditForm(null);
@@ -214,28 +212,7 @@ export default function TransactionList({ isIncome, budgets, transactions, initi
       </div>
 
       <div className="space-y-2 pb-10">
-        {initialLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white p-3 px-3.5 rounded-[14px] shadow-sm border border-gray-100 flex flex-col gap-2.5 animate-pulse">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-4 w-12 bg-gray-200 rounded"></div>
-                    <div className="h-3 w-16 bg-gray-100 rounded"></div>
-                  </div>
-                  <div className="h-4 w-20 bg-gray-200 rounded"></div>
-                </div>
-                <div className="flex justify-between items-center mt-1">
-                  <div className="h-3.5 w-32 bg-gray-200 rounded"></div>
-                  <div className="flex gap-2.5">
-                    <div className="h-3 w-3 bg-gray-200 rounded"></div>
-                    <div className="h-3 w-3 bg-gray-200 rounded"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredTransactions.length === 0 ? (
+        {filteredTransactions.length === 0 ? (
           <div className="text-center py-8 text-gray-400 text-sm bg-white rounded-2xl border border-gray-100 border-dashed">
             해당하는 내역이 없습니다.
           </div>
@@ -357,12 +334,18 @@ export default function TransactionList({ isIncome, budgets, transactions, initi
                       )}
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <button onClick={() => startEdit(t)} className="text-gray-400 hover:text-blue-500 transition-colors">
-                        <Edit2 size={13} />
-                      </button>
-                      <button onClick={() => handleDelete(t.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                        <Trash2 size={13} />
-                      </button>
+                      {t.source === 'budget_one_click' ? (
+                        <span className="text-[10px] font-medium text-gray-400">원클릭 예산은 수입 입력 화면에서 취소해 주세요.</span>
+                      ) : (
+                        <>
+                          <button onClick={() => startEdit(t)} aria-label="거래 수정" className="text-gray-400 hover:text-blue-500 transition-colors">
+                            <Edit2 size={13} />
+                          </button>
+                          <button onClick={() => handleDelete(t.id)} aria-label="거래 삭제" className="text-gray-400 hover:text-red-500 transition-colors">
+                            <Trash2 size={13} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

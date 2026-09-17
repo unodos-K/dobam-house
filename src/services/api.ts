@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Transaction, Budget, DashboardData, BudgetOneClickStatus, IncomeInsert, ExpenseInsert } from '../types';
+import { Transaction, Budget, DashboardData, BudgetOneClickStatus, IncomeInsert, ExpenseInsert, TransactionType } from '../types';
 
 // 환경 변수로 Mock 사용 여부 강제 제어 가능
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
@@ -199,20 +199,37 @@ export const appendExpense = async (dataArray: ExpenseInsert[]) => {
   }
 };
 
-export const deleteTransaction = async (id: string) => {
+export const deleteTransaction = async (id: string, type: TransactionType) => {
   if (USE_MOCK) {
-    const data = getMockData().filter(t => t.id !== id);
+    const current = getMockData();
+    const transaction = current.find(t => t.id === id && t.type === type);
+    if (transaction?.source === 'budget_one_click') {
+      throw new Error('원클릭 예산은 batch 취소로만 삭제할 수 있습니다.');
+    }
+    const found = Boolean(transaction);
+    if (!found) throw new Error('삭제할 거래를 찾을 수 없습니다.');
+    const data = current.filter(t => !(t.id === id && t.type === type));
     saveMockData(data);
-    return;
+    return id;
   }
   
   try {
-    // We don't know if it's income or expense, try both
-    const { error: expError } = await supabase.from('expenses').delete().eq('id', id);
-    if (expError) throw expError;
-
-    const { error: incError } = await supabase.from('incomes').delete().eq('id', id);
-    if (incError) throw incError;
+    const table = type === '지출' ? 'expenses' : 'incomes';
+    if (type === '수입') {
+      const { data: income, error: lookupError } = await supabase
+        .from('incomes')
+        .select('source, batch_id')
+        .eq('id', id)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      if (income?.source === 'budget_one_click') {
+        throw new Error('원클릭 예산은 batch 취소로만 삭제할 수 있습니다.');
+      }
+    }
+    const { data, error } = await supabase.from(table).delete().eq('id', id).select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('삭제할 거래를 찾을 수 없습니다.');
+    return id;
   } catch (error) {
     console.error('API Error (deleteTransaction):', error);
     throw error;
@@ -233,8 +250,12 @@ export const updateTransaction = async (transaction: Transaction) => {
       ? { date: transaction.date, category: transaction.category, subCategory: transaction.subCategory, amount: transaction.amount, memo: transaction.memo || '' }
       : { date: transaction.date, category: transaction.category, subCategory: transaction.subCategory, amount: transaction.amount, memo: transaction.memo || '', source: transaction.source || 'manual', batch_id: transaction.batch_id || null };
 
-    const { error } = await supabase.from(table).update(updateData).eq('id', id);
+    const updateQuery = supabase.from(table).update(updateData).eq('id', id);
+    const { data: updatedRows, error } = type === '수입'
+      ? await updateQuery.neq('source', 'budget_one_click').select('id')
+      : await updateQuery.select('id');
     if (error) throw error;
+    if (!updatedRows || updatedRows.length === 0) throw new Error('수정할 수 없는 거래입니다.');
     
     return transaction;
   } catch (error) {

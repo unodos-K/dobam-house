@@ -11,7 +11,6 @@ export default function TransactionsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const [filterDate, setFilterDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -35,11 +34,9 @@ export default function TransactionsPage() {
     }
   }, []);
 
-  useEffect(() => { void loadData(); }, [loadData, refreshTrigger]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   useEffect(() => {
-    if (transactions.length === 0) return;
-
     const dashboard: DashboardData = { 'all': {} };
     
     transactions.forEach(t => {
@@ -72,12 +69,19 @@ export default function TransactionsPage() {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const handleRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
+  const handleTransactionDeleted = (deletedId: string) => {
+    setTransactions(prev => prev.filter(transaction => transaction.id !== deletedId));
+  };
+
+  const handleTransactionUpdated = (updated: Transaction) => {
+    setTransactions(prev => prev.map(transaction => transaction.id === updated.id ? updated : transaction));
   };
 
   if (initialLoading) return <LoadingSpinner text="거래 데이터를 불러오는 중..." />;
   if (loadError) return <DataLoadError onRetry={loadData} isRetrying={initialLoading} />;
+
+  const expenseTransactions = transactions.filter(transaction => transaction.type === '지출');
+  const incomeTransactions = transactions.filter(transaction => transaction.type === '수입');
 
   return (
     <div className="pb-24 bg-gray-50/30 min-h-screen">
@@ -115,9 +119,10 @@ export default function TransactionsPage() {
           <TransactionList 
             isIncome={false} 
             budgets={budgets} 
-            transactions={transactions}
-            initialLoading={initialLoading}
-            onToast={(msg) => { showToast(msg); handleRefresh(); }} 
+            transactions={expenseTransactions}
+            onTransactionDeleted={handleTransactionDeleted}
+            onTransactionUpdated={handleTransactionUpdated}
+            onToast={showToast}
             filterDate={filterDate}
           />
         </section>
@@ -129,9 +134,10 @@ export default function TransactionsPage() {
           <TransactionList 
             isIncome={true} 
             budgets={budgets} 
-            transactions={transactions}
-            initialLoading={initialLoading}
-            onToast={(msg) => { showToast(msg); handleRefresh(); }} 
+            transactions={incomeTransactions}
+            onTransactionDeleted={handleTransactionDeleted}
+            onTransactionUpdated={handleTransactionUpdated}
+            onToast={showToast}
             filterDate={filterDate}
           />
         </section>
